@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="Template.DataAccess/Template.DataAccess.csproj" />
+  <Project Path="Template.BusinessRule/Template.BusinessRule.csproj" />
+  <Project Path="Template.Common/Template.Common.csproj" />
+  <Project Path="Template.Test/Template.Test.csproj" Id="d871f3fb-c51f-4ad1-89bf-a808254d1aaa" />
+  <Project Path="Template.WebApi/Template.WebApi.csproj" />
+</Solution>

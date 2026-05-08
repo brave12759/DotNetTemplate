@@ -1,0 +1,144 @@
+## ========================
+## .NET / C#
+## ========================
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+## NuGet
+*.nupkg
+*.snupkg
+packages/
+!packages/.gitkeep
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+## Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+## Visual Studio
+.vs/
+*.aps
+*.ncb
+*.opendb
+*.opensdf
+*.sdf
+*.cachefile
+*.VC.db
+*.VC.VC.opendb
+Generated\ Files/
+_UpgradeReport_Files/
+Backup*/
+UpgradeLog*.XML
+UpgradeLog*.htm
+ServiceFabricBackup/
+TestResult*.xml
+
+## Rider / JetBrains
+.idea/
+*.sln.iml
+
+## VS Code
+.vscode/
+.vscode-test/
+
+## AI / Agent tools
+.codex/
+.copilot/
+.cursor/
+.roo/
+.aider*
+
+## ========================
+## ASP.NET Core
+## ========================
+# 機密設定（絕不提交）
+appsettings.Staging.json
+secrets.json
+**/secrets.json
+
+# IIS 部署設定（各環境不同）
+web.config
+
+# User secrets
+%APPDATA%/Microsoft/UserSecrets/
+~/.microsoft/usersecrets/
+
+## ========================
+## Docker
+## ========================
+.dockerignore.bak
+
+## Local env / temp
+.env
+.env.*
+!.env.example
+*.log
+*.tmp
+*.temp
+
+## ========================
+## OS
+## ========================
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Linux
+*~
+
+## ========================
+## 測試 / 覆蓋率
+## ========================
+TestResults/
+coverage*/
+*.coverage
+*.coveragexml
+*.trx
+
+## ========================
+## Entity Framework
+## ========================
+# 暫時的 Migration 備份（保留正式 Migrations 資料夾）
+*.efbackup
+
+## ========================
+## 發布輸出
+## ========================
+publish/
+PublishProfiles/
+
+## Extra build artifacts (recursive safety)
+**/bin/**
+**/obj/**
+**/out/**
+**/artifacts/**

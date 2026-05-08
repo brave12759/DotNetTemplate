@@ -1,0 +1,61 @@
+include:
+  - project: rd/components
+    ref: v0.0.3
+    file: /opencode/default.yml
+    inputs:
+      auth_json: $OPENCODE_AUTH_JSON
+      rules:
+        - if: '$RUN_OPENCODE == "true"'
+      before_script:
+        # Install .NET 10 SDK for this project
+        - apk add --no-cache dotnet10-sdk
+
+stages:
+  - build
+  - test
+  - cleanup
+  - opencode
+
+default:
+  tags:
+    - docker-socket-binding
+
+.on_success: &on_success
+  rules:
+    - if: '$RUN_OPENCODE == "true"'
+      when: never
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: on_success
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+      when: on_success
+    - when: never
+
+image: alpine:latest 
+
+build-job:
+  <<: [ *on_success ]
+  stage: build
+  script:
+    - echo "開始建置專案..."
+    - mkdir -p build/
+    - echo "這是一個編譯好的檔案" > build/app.bin
+  artifacts:
+    paths:
+      - build/
+    expire_in: 1 hour
+
+unit-test-job:
+  <<: [ *on_success ]
+  stage: test
+  script:
+    - echo "執行測試中..."
+    - ls build/
+    - sleep 5
+    - echo "測試通過"
+
+cleanup-job:
+  <<: [ *on_success ]
+  stage: cleanup
+  script:
+    - echo "執行環境清理..."
+    - rm -rf build/
