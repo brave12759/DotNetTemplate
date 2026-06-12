@@ -67,3 +67,5 @@ Template.DataAccess/
 | 主題 | 文件 |
 |---|---|
 | DbContext 架構、UtcDateTimeConverter 原理、反向工程注意事項 | [DataAccess.md](Doc/DataAccess.md) |
+
+FileStorage 專屬說明請參考 [Template.Common/FileStorage/Doc/FileStorage.md](../Template.Common/FileStorage/Doc/FileStorage.md)。

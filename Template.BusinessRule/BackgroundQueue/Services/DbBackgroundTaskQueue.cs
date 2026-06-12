@@ -1,5 +1,8 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Template.BusinessRule;
+using Template.BusinessRule.LogService.Models;
+using Template.BusinessRule.LogService.Services;
 using Template.Common.BackgroundQueue;
 using Template.Common.Settings;
 using Template.DataAccess.ProjectDbContext;
@@ -13,6 +16,8 @@ public class DbBackgroundTaskQueue(
     IServiceProvider serviceProvider,
     BackgroundQueueSettings settings) : BaseService(serviceProvider), IBackgroundTaskQueue
 {
+    private readonly Lazy<ILogService?> _logService = new(() => serviceProvider.GetService<ILogService>());
+
     public async Task<long> EnqueueAsync(
         BackgroundWorkType workType,
         string payloadJson = "",
@@ -42,11 +47,13 @@ public class DbBackgroundTaskQueue(
             WorkType = (int)workType,
             WorkKey = workKey?.Trim() ?? string.Empty,
             PayloadJson = payloadJson,
+            LastError = string.Empty,
             Priority = priority,
             Status = (int)BackgroundJobStatus.Pending,
             RetryCount = 0,
             MaxRetryCount = maxRetryCount ?? settings.DefaultMaxRetryCount,
             ScheduledTime = scheduledTime ?? now,
+            LockedBy = string.Empty,
             CreatedTime = now,
             CreatedId = userId,
             UpdatedTime = now,
@@ -56,6 +63,12 @@ public class DbBackgroundTaskQueue(
 
         Db.Sys_BackgroundJobs.Add(entity);
         await Db.SaveChangesAsync(cancellationToken);
+        await WriteQueueLogAsync(
+            entity,
+            "Enqueue",
+            userId,
+            "建立背景工作。",
+            cancellationToken: cancellationToken);
         return entity.Id;
     }
 
@@ -75,8 +88,10 @@ public class DbBackgroundTaskQueue(
             var entity = await Db.Sys_BackgroundJobs
                 .Where(j =>
                     j.WorkType == (int)workType &&
-                    j.Status == (int)BackgroundJobStatus.Pending &&
-                    j.ScheduledTime <= now)
+                    ((j.Status == (int)BackgroundJobStatus.Pending &&
+                        j.ScheduledTime <= now) ||
+                     (j.Status == (int)BackgroundJobStatus.Processing &&
+                        j.LockedUntil <= now)))
                 .OrderBy(j => j.Priority)
                 .ThenBy(j => j.Id)
                 .FirstOrDefaultAsync(cancellationToken);
@@ -95,6 +110,12 @@ public class DbBackgroundTaskQueue(
             try
             {
                 await Db.SaveChangesAsync(cancellationToken);
+                await WriteQueueLogAsync(
+                    entity,
+                    "Claim",
+                    workerId,
+                    "背景工作已被執行者領取。",
+                    cancellationToken: cancellationToken);
                 return Map(entity);
             }
             catch (DbUpdateConcurrencyException)
@@ -121,6 +142,12 @@ public class DbBackgroundTaskQueue(
         entity.Version = Guid.NewGuid();
 
         await Db.SaveChangesAsync(cancellationToken);
+        await WriteQueueLogAsync(
+            entity,
+            "Complete",
+            entity.LockedBy,
+            "背景工作執行成功。",
+            cancellationToken: cancellationToken);
     }
 
     public async Task FailAsync(
@@ -141,7 +168,7 @@ public class DbBackgroundTaskQueue(
         entity.UpdatedId = entity.LockedBy;
         entity.Version = Guid.NewGuid();
 
-        if (entity.RetryCount > entity.MaxRetryCount)
+        if (entity.RetryCount >= entity.MaxRetryCount)
         {
             entity.Status = (int)BackgroundJobStatus.Failed;
             entity.CompletedTime = now;
@@ -153,6 +180,15 @@ public class DbBackgroundTaskQueue(
         }
 
         await Db.SaveChangesAsync(cancellationToken);
+        await WriteQueueLogAsync(
+            entity,
+            "Fail",
+            entity.LockedBy,
+            entity.Status == (int)BackgroundJobStatus.Failed
+                ? "背景工作執行失敗且已達重試上限。"
+                : "背景工作執行失敗，等待下次重試。",
+            errorMessage,
+            cancellationToken);
     }
 
     public async Task<int> CountPendingAsync(BackgroundWorkType? workType = null, CancellationToken cancellationToken = default)
@@ -167,6 +203,9 @@ public class DbBackgroundTaskQueue(
         return await query.CountAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// 將背景工作資料表實體轉成背景佇列領域模型。
+    /// </summary>
     private static BackgroundJob Map(Sys_BackgroundJob entity)
     {
         return new BackgroundJob
@@ -182,5 +221,37 @@ public class DbBackgroundTaskQueue(
             ScheduledTime = entity.ScheduledTime,
             CreatedTime = entity.CreatedTime
         };
+    }
+
+    /// <summary>
+    /// 寫入佇列日誌；測試未註冊 LogService 時略過。
+    /// </summary>
+    private Task WriteQueueLogAsync(
+        Sys_BackgroundJob entity,
+        string eventName,
+        string operatorId,
+        string message,
+        string errorMessage = "",
+        CancellationToken cancellationToken = default)
+    {
+        return _logService.Value?.WriteQueueAsync(new QueueLogCreateRequest
+        {
+            OperatorId = operatorId,
+            JobId = entity.Id,
+            WorkType = entity.WorkType,
+            WorkKey = entity.WorkKey,
+            EventName = eventName,
+            Status = entity.Status,
+            RetryCount = entity.RetryCount,
+            Message = message,
+            ErrorMessage = errorMessage,
+            Metadata = new
+            {
+                entity.ScheduledTime,
+                entity.StartedTime,
+                entity.CompletedTime,
+                entity.LockedBy
+            }
+        }, cancellationToken) ?? Task.CompletedTask;
     }
 }

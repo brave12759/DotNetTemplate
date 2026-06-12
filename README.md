@@ -1,76 +1,14 @@
+![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4) ![ASP.NET Core](https://img.shields.io/badge/ASP.NET%20Core-Web%20API-512BD4) ![EF Core](https://img.shields.io/badge/EF%20Core-10.0-6DB33F) ![SQL Server](https://img.shields.io/badge/SQL%20Server-EF%20Provider-CC2927) ![OpenAPI](https://img.shields.io/badge/OpenAPI-Swagger-85EA2D) ![JWT](https://img.shields.io/badge/Auth-JWT-000000) ![Serilog](https://img.shields.io/badge/Logging-Serilog-2D5C88) ![Background Queue](https://img.shields.io/badge/Jobs-Background%20Queue-0F766E) ![SignalR](https://img.shields.io/badge/Realtime-SignalR-2563EB) ![Health Checks](https://img.shields.io/badge/Health-Checks-16A34A) ![CORS](https://img.shields.io/badge/CORS-Configurable-7C3AED) ![MSTest](https://img.shields.io/badge/Tests-MSTest-007ACC) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 # Template — ASP.NET Core Web API 專案範本
 
-[![.NET 10](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
-[![ASP.NET Core Web API](https://img.shields.io/badge/ASP.NET%20Core-Web%20API-512BD4?logo=dotnet&logoColor=white)](https://learn.microsoft.com/aspnet/core)
-[![docs 繁中](https://img.shields.io/badge/docs-繁體中文-1E88E5)](#template--aspnet-core-web-api-專案範本)
-[![Architecture DDD](https://img.shields.io/badge/Architecture-DDD-0A7EA4)](#ddd-分層架構)
-[![EF Core](https://img.shields.io/badge/ORM-EF%20Core-6C43B7)](https://learn.microsoft.com/ef/core)
-[![JWT Auth](https://img.shields.io/badge/Auth-JWT-FF6F00)](#jwt-驗證)
-[![MSTest](https://img.shields.io/badge/Test-MSTest-5C2D91?logo=visualstudio&logoColor=white)](https://learn.microsoft.com/dotnet/core/testing/unit-testing-with-mstest)
-[![Swagger](https://img.shields.io/badge/API-Swagger-85EA2D?logo=swagger&logoColor=black)](https://swagger.io/)
-[![License](https://img.shields.io/badge/License-Custom%20Non--Commercial-D32F2F)](LICENSE)
-    
-.NET 10 Web API 基礎範本，內建 JWT 驗證、登入/登出、Token 撤銷、全域例外處理、加解密工具、HTTPS 強制、Swagger 文件等完整基礎設施。
+.NET 10 Web API 基礎範本，內建 JWT 驗證、登入/登出、Token 撤銷、全域例外處理、加解密工具、HTTP/HTTPS 相容、Swagger 文件等完整基礎設施。
 
-## 聯絡方式與商業合作
+---
 
-如果您需要以下合作項目，歡迎聯絡作者：
+## 授權
 
-- 商業授權
-- 客製化功能開發
-- 系統整合
-- 技術顧問 / 顧問合作
-- 專案延伸使用授權
-
-### Contact
-
-- GitHub Profile: [brave12759](https://github.com/brave12759)
-- Repository: [DotNetTemplate](https://github.com/brave12759/DotNetTemplate)
-- Issues: [提交 Issue / Open an Issue](https://github.com/brave12759/DotNetTemplate/issues)
-
-> 若您有商業合作、授權例外、模板整合或客製需求，建議先透過 GitHub Issues 聯絡，或前往作者 GitHub 個人頁面取得其他聯絡資訊。
-
-### Business Collaboration
-
-For commercial licensing, custom development, consulting, integration, or exception requests, please contact the author via GitHub Issues first, or visit the author's GitHub profile for additional contact information.
-
-## 授權與作品集使用限制
-
-本儲存庫目前採用 **自訂非商用作品集授權**。詳細內容請參閱根目錄的 [LICENSE](LICENSE) 與 [NOTICE](NOTICE)。
-
-> **保留權利說明：** 上述限制主要針對第三方，**不限制作者本人**未來將這套程式重用、修改、商業化、整合到新專案，或在未來任職公司、合作案與其他情境中使用；作者也可另行書面授權他人使用。
-
-### 允許事項
-
-- 閱讀原始碼
-- 下載到本機進行非商業研究、學習與技術分析
-- 私下進行非營利測試與個人實驗
-
-### 禁止事項
-
-- 直接複製整套程式後拿去營利
-- 用於接案、商業交付、公司內部商業系統或 SaaS 服務
-- 修改後重新包裝販售、上架、轉售或散布
-- 移除作者標示、授權條款或版權聲明
-
-### English Notice
-
-This repository is released under a **custom non-commercial portfolio license**. See [LICENSE](LICENSE) and [NOTICE](NOTICE) for full terms.
-
-> **Reserved rights:** These restrictions primarily apply to third parties. They do **not** limit the author's own right to reuse, modify, commercialize, incorporate this code into future projects or employment, or separately authorize other parties in writing.
-
-#### You may
-
-- read the source code
-- download it locally for non-commercial study, learning, and technical reference
-- perform private, non-profit testing and experimentation
-
-#### You may not
-
-- copy the full project for profit or business use
-- use it for client delivery, internal business systems, or SaaS services
-- repackage, resell, redistribute, or commercialize modified versions
-- remove author attribution, license terms, or copyright notices
+本專案採用 [MIT License](LICENSE)。
 
 ---
 
@@ -94,6 +32,14 @@ This repository is released under a **custom non-commercial portfolio license**.
 
 ---
 
+對應 Java Spring Boot 的套件分層概念如下：
+
+| 層次 | 專案 | 對應 Spring | 主要內容 |
+|---|---|---|---|
+| 🌐 **Presentation** | `Template.WebApi/` | `@Controller` / `@RestController` | Controllers · Filters · JWT Handler · Program.cs |
+| ⚙️ **Application / Domain** | `Template.BusinessRule/` | `@Service` | 功能模組 · Service 介面/實作 · 模組專用 Models |
+| 📦 **Shared Kernel** | `Template.Common/` | 共用模型 / 設定套件 | 共用 Models · Settings · Enums · Extensions · 跨模組介面 |
+| 🗄️ **Infrastructure** | `Template.DataAccess/` (EF Core) | `@Repository` / JPA | ProjectDbContext · LogDbContext · Value Converter |
 
 ### 依賴規則（Dependency Rule）
 
@@ -153,6 +99,88 @@ Template.slnx
 
 ---
 
+## 專案更名方式
+
+> 以下以 `MyApp` 為目標名稱示範，請依實際情況替換。
+
+### 步驟一：全域文字取代（在 VS Code 使用 Ctrl+Shift+H）
+
+**順序很重要：較長的字串優先取代，避免部分取代導致雙重前綴。**
+
+| 搜尋（完全相符） | 取代為 | 影響範圍 |
+|---|---|---|
+| `Template.WebApi` | `MyApp.WebApi` | namespace、csproj AssemblyName/RootNamespace |
+| `Template.BusinessRule` | `MyApp.BusinessRule` | namespace、csproj |
+| `Template.DataAccess` | `MyApp.DataAccess` | namespace、csproj |
+| `Template.Common` | `MyApp.Common` | namespace、csproj |
+| `Template.Test` | `MyApp.Test` | namespace、csproj |
+| `TemplateDb` | `MyAppDb` | appsettings 資料庫名稱 |
+| `Template API` | `MyApp API` | appsettings ApiSettings.Name（Swagger 標題） |
+| `Template` | `MyApp` | 其餘所有出現處（最後執行） |
+
+> **注意：** 最後才取代純 `Template`，避免將 `Template.WebApi` 變成 `MyApp.WebApi.WebApi`。
+
+---
+
+### 步驟二：重新命名實體資料夾與檔案
+
+```
+方案目錄/
+├── Template.slnx              → MyApp.slnx
+├── Template.WebApi/           → MyApp.WebApi/（資料夾）
+│   └── Template.WebApi.csproj → MyApp.WebApi.csproj
+├── Template.Common/           → MyApp.Common/
+│   └── Template.Common.csproj → MyApp.Common.csproj
+├── Template.BusinessRule/     → MyApp.BusinessRule/
+│   └── Template.BusinessRule.csproj → MyApp.BusinessRule.csproj
+├── Template.DataAccess/       → MyApp.DataAccess/
+│   └── Template.DataAccess.csproj → MyApp.DataAccess.csproj
+└── Template.Test/             → MyApp.Test/
+    └── Template.Test.csproj   → MyApp.Test.csproj
+```
+
+---
+
+### 步驟三：更新 `.slnx` 內的專案路徑
+
+用文字編輯器開啟 `MyApp.slnx`，將所有 `Template.WebApi/` 路徑改為 `MyApp.WebApi/` 等對應名稱。
+
+---
+
+### 步驟四：更新以下特定檔案
+
+#### `MyApp.WebApi/web.config` 與 `web.config.example`
+```xml
+<aspNetCore ... arguments=".\MyApp.WebApi.dll" ...>
+```
+
+#### `MyApp.WebApi/appsettings.json` / `appsettings.*.json`
+- `DatabaseSettings.ProjectConnectionString` → 資料庫名稱 `MyAppDb`
+- `DatabaseSettings.LogConnectionString` → 資料庫名稱 `MyAppLogDb`（若有）
+- `ApiSettings.Name` → `MyApp API`
+
+---
+
+### 步驟五：重新產生 UserSecretsId（選用）
+
+`Template.WebApi.csproj` 中有一個 `<UserSecretsId>` 用於本機開發機密設定。更名後若需要隔離，執行：
+
+```bash
+dotnet user-secrets init --project MyApp.WebApi/MyApp.WebApi.csproj
+```
+
+---
+
+### 步驟六：驗證
+
+```bash
+dotnet build MyApp.slnx
+```
+
+確認無任何 `error` 輸出即完成。
+
+---
+
 ## 功能文件
 
 | 功能 | 說明 | 文件 |
@@ -172,6 +200,7 @@ Template.slnx
 | [設定類別](#設定類別) | 全部 Settings 類別欄位說明與 appsettings 範例 | [Settings.md](Template.Common/Settings/Doc/Settings.md) |
 | [ClockUtil](#clockutil) | 時間日期格式、解析、UTC/本地轉換、DateOnly/TimeOnly 互轉 | [ClockUtil.md](Template.Common/Utils/Doc/ClockUtil.md) |
 | [Background Queue](#background-queue) | 背景工作佇列基礎設施、HostedService、DI 使用方式 | [BackgroundQueue.md](Template.Common/BackgroundQueue/Doc/BackgroundQueue.md) |
+| [SignalR Queue](#signalr-queue) | SignalR 推播基礎設施，搭配 BackgroundQueue 非同步送出 | [SignalR.md](Template.Common/SignalR/Doc/SignalR.md) |
 | [DataAccess](#dataaccess) | DbContext、UtcDateTimeConverter、反向工程說明 | [DataAccess.md](Template.DataAccess/Doc/DataAccess.md) |
 | [Health Check](#health-check) | 服務存活與資料庫可連線檢查、K8s probe 整合 | Program.cs `AddHealthChecks` 區塊 |
 
@@ -319,6 +348,17 @@ Template.slnx
 - 適合寄信、產報表、匯入檔案、呼叫外部 API 等非即時工作
 
 → [完整說明](Template.Common/BackgroundQueue/Doc/BackgroundQueue.md)
+
+---
+
+## SignalR Queue
+
+- `ISignalRQueueService` 預設註冊，可將推播訊息寫入 BackgroundQueue。
+- `QueuedSignalRMessageHandler` 預設註冊為 `IBackgroundJobHandler`，處理 `BackgroundWorkType.SignalRMessage`。
+- Hub endpoint 為 `/hubs/notifications`，使用 JWT 驗證，WebSocket 可透過 `access_token` query string 傳 token。
+- 支援 All / Group / User / Connection 四種推播目標。
+
+→ [完整說明](Template.Common/SignalR/Doc/SignalR.md)
 
 ---
 

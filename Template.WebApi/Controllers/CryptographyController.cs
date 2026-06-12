@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Template.BusinessRule.CryptographyService.Models;
-using Template.Common.Services;
+using Template.BusinessRule.CryptographyService.Services;
 
 namespace Template.WebApi.Controllers;
 

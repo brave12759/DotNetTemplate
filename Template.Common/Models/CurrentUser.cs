@@ -1,7 +1,7 @@
 namespace Template.Common.Models;
 
 /// <summary>
-/// 當前登入使用者資訊（由 JWT Claims 解析）。
+/// 從 JWT claims 解析出的目前登入使用者資訊。
 /// </summary>
 public class CurrentUser
 {
@@ -11,37 +11,37 @@ public class CurrentUser
     public string UserId { get; set; } = string.Empty;
 
     /// <summary>
-    /// 電子郵件。
+    /// 使用者 Email。
     /// </summary>
     public string Email { get; set; } = string.Empty;
 
     /// <summary>
-    /// 聯絡電話。
+    /// 使用者手機。
     /// </summary>
     public string MobilePhone { get; set; } = string.Empty;
 
     /// <summary>
-    /// 部門 ID。
+    /// Token 內的部門 ID。
     /// </summary>
     public string DeptId { get; set; } = string.Empty;
 
     /// <summary>
-    /// 登入來源 IP。
+    /// Token 內記錄的登入或請求 IP。
     /// </summary>
     public string Ip { get; set; } = string.Empty;
 
     /// <summary>
-    /// JWT Token 簽發時間（Unix Timestamp）。
+    /// Token 發行時間，Unix timestamp。
     /// </summary>
     public long IssuedTime { get; set; }
 
     /// <summary>
-    /// JWT Token 到期時間（Unix Timestamp）。
+    /// Token 到期時間，Unix timestamp。
     /// </summary>
     public long ExpiredTime { get; set; }
 
     /// <summary>
-    /// JWT Token 唯一識別碼（jti）。
+    /// jti claim 內的 Token ID。
     /// </summary>
     public string TokenId { get; set; } = string.Empty;
 }

@@ -1,140 +1,88 @@
-# LoginService 登入服務說明文件
+﻿# LoginService 登入服務
 
-[← 返回 README](../../../README.md) ｜ [← 返回 BusinessRule](../../README.md)
+[專案 README](../../../README.md) / [BusinessRule README](../../README.md)
 
-## 概述
+## 功能說明
 
-LoginService 位於 Template.BusinessRule 層，負責：
+`LoginService` 負責登入驗證、登入失敗鎖定、密碼過期判斷、JWT Token 產生、Token 刷新與登出撤銷。
 
-- 帳號密碼驗證
-- JWT 發放
-- JWT 登出撤銷（依 jti 黑名單）
-- 開發環境 DevBypass 相容行為
+## 檔案位置
 
----
+| 類型 | 路徑 |
+|---|---|
+| 介面 | `Template.BusinessRule/LoginService/Services/ILoginService.cs` |
+| 實作 | `Template.BusinessRule/LoginService/Services/LoginService.cs` |
+| 回傳模型 | `Template.Common/Models/LoginResult.cs` |
+| API Controller | `Template.WebApi/Controllers/AuthController.cs` |
+| 測試 | `Template.Test/Tests/LoginServiceTests.cs` |
 
-## 架構位置
+## 系統設定
+
+登入相關設定放在 `Sys_BasicSettings`，`Type = SystemSetting`。
+
+| Key | 說明 | 單位 |
+|---|---|---|
+| `LoginFailLimit` | 密碼錯誤幾次後進入登入鎖定 | 次 |
+| `AccountFailLock` | 登入失敗鎖定時間；若為 0 或未設定，達到錯誤次數後視為需人工處理 | 分鐘 |
+| `PassWordExpire` | 密碼有效天數；若為 0 或未設定，不檢查密碼過期 | 天 |
+
+設定不存在、格式錯誤或小於等於 0 時，服務會視為 0。
+
+## 登入鎖定規則
+
+系統不另外存 `LockoutEndTime`。帳號是否被鎖定由下列資料推算：
 
 ```text
-Template.Common/
-├── Models/
-│   └── LoginResult.cs                           # 登入操作結果
-└── Services/
-    ├── ILoginService.cs                          # 登入服務介面（本服務契約）
-    ├── IJwtService.cs                            # JWT 產生介面
-    ├── ICurrentUserService.cs                    # 當前使用者介面
-    └── ITokenRevocationService.cs               # Token 撤銷介面
-
-Template.BusinessRule/
-├── BaseService.cs                               # 邏輯層基底（提供 Db / LogDb / CurrentUserService）
-└── LoginService/
-    ├── Doc/
-    │   └── LoginService.md
-    └── Services/
-        └── LoginService.cs                      # 登入服務實作
-
-Template.WebApi/
-├── Controllers/
-│   └── AuthController.cs
-├── Services/
-│   ├── JwtService.cs
-│   └── CurrentUserService.cs
-└── Authentication/
-    └── DevBypassAuthenticationHandler.cs
+LoginFailCount >= LoginFailLimit
+且
+UpdatedTime + AccountFailLock 分鐘 > 現在時間
 ```
 
----
+鎖定規則如下：
 
-## 服務介面
+- 平常正常登入或尚未達到錯誤上限時，不會有額外鎖定狀態。
+- 密碼錯誤時會累加 `LoginFailCount`，並更新 `UpdatedTime` 作為鎖定起算點。
+- 錯誤次數達到 `LoginFailLimit` 時，回傳帳號鎖定。
+- 鎖定期間再次嘗試登入，會更新 `UpdatedTime`，讓鎖定時間從該次嘗試重新起算。
+- 鎖定時間到期後，下一次登入會先清除 `LoginFailCount`，但不會自動啟用被人工停用的帳號。
+- `AccountFailLock` 為 0 或未設定時，達到錯誤上限後不自動解鎖，需由管理員重設密碼或清除失敗次數。
 
-`ILoginService`（`Template.Common.Services`）提供：
+## 登入流程
 
-- Task<LoginResult> LoginAsync(string userId, string password, string ip)
-- Task<LoginResult> DevLoginAsync(string userId, string ip)
-- Task LogoutAsync(string tokenId, long expiredUnixTimeSeconds)
+1. 檢查帳號與密碼是否有輸入。
+2. 依 `UserId` 查詢使用者。
+3. 讀取 `LoginFailLimit` 與 `AccountFailLock`。
+4. 若帳號仍在鎖定期間，延長鎖定並回傳鎖定結果。
+5. 若鎖定已到期，清除 `LoginFailCount`。
+6. 檢查帳號是否啟用。
+7. 驗證密碼；密碼錯誤時累加 `LoginFailCount`。
+8. 密碼正確後，依 `Sys_UserPasswordHistory` 最後一筆 `ChangedTime` 與 `PassWordExpire` 判斷密碼是否過期。
+9. 登入成功後清除 `LoginFailCount`、更新最後登入資訊，並產生 JWT Token。
 
----
+## Token 刷新流程
 
-## 流程說明
+1. 前端帶目前有效的 Bearer Token 呼叫 `POST /Auth/Refresh`。
+2. API 從 Token 取得 `UserId`、`jti` 與 `exp`。
+3. 服務確認使用者存在、啟用、未被登入失敗鎖定，且密碼未過期。
+4. 產生新的 JWT Token。
+5. 將舊 Token 的 `jti` 加入撤銷清單。
+6. 回傳新的 Token。
 
-### 1) LoginAsync
+## API
 
-1. 依 userId 查詢 Sys_UserInfos。
-2. 若不存在或停用，回傳失敗。
-3. 以 ICryptographyService.VerifyHash 比對密碼。
-4. 驗證成功後呼叫 IJwtService.GenerateToken。
-5. 回傳 LoginResult.Ok(token)。
+| API | 權限 | 說明 |
+|---|---|---|
+| `POST /Auth/Login` | 匿名 | 使用帳號密碼登入並取得 JWT Token |
+| `POST /Auth/Refresh` | 需 JWT | 使用目前尚未過期的 JWT Token 換取新 Token，並撤銷舊 Token |
+| `GET /Auth/Me` | 需 JWT | 取得目前 Token 內的使用者資訊 |
+| `POST /Auth/Logout` | 需 JWT | 登出並撤銷目前 Token |
 
-### 2) LogoutAsync
+## LoginResult
 
-1. 接收目前 JWT 的 jti 與 exp。
-2. 呼叫 ITokenRevocationService.Revoke(jti, exp)。
-3. 之後相同 jti 的 Token，在 JWT 驗證階段會被拒絕。
-
-### 3) JWT 驗證撤銷檢查
-
-在 Program.cs 的 AddJwtBearer 事件中：
-
-- OnTokenValidated 會取出 jti。
-- 若 ITokenRevocationService.IsRevoked(jti) 為 true，直接 context.Fail。
-
----
-
-## API 端點
-
-AuthController 路由為 [controller]/[action]：
-
-- POST /Auth/Login
-  - AllowAnonymous
-  - 請求：{ UserId, Password }
-  - 回應：{ Token }
-
-- POST /Auth/Logout
-  - Authorize
-  - 需帶 Authorization: Bearer <token>
-  - 回應：{ Message: "登出成功。" }
-
----
-
-## Development 環境行為
-
-系統已啟用 DevBypassAuthenticationHandler：
-
-- 無 Bearer Token：自動以 DevBypassUser 假用戶通過驗證。
-- 有 Bearer Token：仍走真實 JWT 驗證與撤銷檢查。
-
-注意：
-
-- /Auth/Logout 需要 Bearer Token 才能撤銷目前 Token。
-- 若是 DevBypass 無 Token 直接呼叫 /Auth/Logout，會回傳 BadRequest。
-
----
-
-## 撤銷儲存策略（多 API 部署）
-
-預設採用 `EfCoreTokenRevocationService`（需設定 `LogConnectionString`）：
-
-- 撤銷資料表：`dbo.TokenRevocation`
-- 連線來源：`DatabaseSettings.LogConnectionString`
-- 共用方式：多台 API 連到同一個 Log DB，即可共享登出狀態
-
-降級機制：
-
-- 若 `LogConnectionString` 為空，系統自動降級為 `InMemoryTokenRevocationService`。
-- 降級模式僅適合單機開發，不適用多節點正式環境。
-
----
-
-## DI 註冊（Program.cs）
-
-```csharp
-// Token 撤銷（自動依 LogConnectionString 選擇）
-if (!string.IsNullOrWhiteSpace(databaseSettings.LogConnectionString))
-    builder.Services.AddScoped<ITokenRevocationService, EfCoreTokenRevocationService>();
-else
-    builder.Services.AddSingleton<ITokenRevocationService, InMemoryTokenRevocationService>();
-
-builder.Services.AddScoped<IJwtService, JwtService>();
-builder.Services.AddScoped<ILoginService, LoginService>();
-builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
-```
+| 欄位 | 說明 |
+|---|---|
+| `Success` | 是否成功 |
+| `Token` | 成功時回傳的 JWT Token |
+| `ErrorMessage` | 失敗訊息 |
+| `AccountDisabled` | 帳號是否因鎖定或停用而不可登入 |
+| `PasswordExpired` | 密碼是否已過期 |

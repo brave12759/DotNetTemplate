@@ -19,11 +19,43 @@
    "T4TemplatePath": null,
    "Tables": [
       {
+         "Name": "[dbo].[Sso_Client]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[Sys_BackgroundJob]",
+         "ObjectType": 0
+      },
+      {
          "Name": "[dbo].[Sys_BasicSettings]",
          "ObjectType": 0
       },
       {
+         "Name": "[dbo].[Sys_Department]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[Sys_FunctionPermission]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[Sys_MenuTree]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[Sys_RoleGroup]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[Sys_RoleGroupFunctionPermission]",
+         "ObjectType": 0
+      },
+      {
          "Name": "[dbo].[Sys_UserInfo]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[Sys_UserRoleGroup]",
          "ObjectType": 0
       }
    ],

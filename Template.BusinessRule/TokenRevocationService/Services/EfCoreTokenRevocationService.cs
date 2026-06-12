@@ -81,6 +81,9 @@ public class EfCoreTokenRevocationService(LogDbContext logDb) : ITokenRevocation
     /// <summary>
     /// 確保 TokenRevocation 資料表已建立（首次啟動時自動執行 EnsureCreated）。
     /// </summary>
+    /// <summary>
+    /// 確認 Token 撤銷資料表存在，缺少時建立必要資料表。
+    /// </summary>
     private void EnsureTable()
     {
         if (_initialized)

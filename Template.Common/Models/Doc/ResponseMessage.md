@@ -1,6 +1,6 @@
 # ResponseMessage 說明文件
 
-[← 返回 README](../../../README.md) ｜ [← 返回 Template.Common](../../README.md)
+[← 返回方案 README](../../../README.md) ｜ [← 返回上層 README](../../README.md)
 
 ## 概述
 

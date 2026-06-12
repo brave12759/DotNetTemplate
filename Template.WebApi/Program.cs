@@ -1,27 +1,29 @@
+using System.Security.Claims;
+using System.Text;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
-using Microsoft.Extensions.Options;
 using Serilog;
 using Serilog.Events;
 using Swashbuckle.AspNetCore.SwaggerUI;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
-using System.Text.Json;
-using System.Security.Claims;
-using Template.Common.Settings;
-using Template.Common.Models;
 using Template.BusinessRule.Extensions;
-using Template.WebApi.Authentication;
+using Template.Common.BackgroundQueue;
+using Template.Common.Models.Jwt;
+using Template.Common.Models;
 using Template.Common.Services;
+using Template.Common.Settings;
+using Template.BusinessRule.TokenRevocationService.Services;
+using Template.WebApi.Authentication;
 using Template.WebApi.Converters;
+using Template.WebApi.Extensions;
 using Template.WebApi.Filters;
 using Template.WebApi.Services;
 
-// 捕捉應用程式啟動階段的錯誤
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Warning()
     .WriteTo.Console()
@@ -30,15 +32,13 @@ Log.Logger = new LoggerConfiguration()
 try
 {
     var builder = WebApplication.CreateBuilder(args);
+    LoadDotEnv(builder.Environment.ContentRootPath, builder.Environment.EnvironmentName);
+    builder.Configuration.AddEnvironmentVariables();
+    builder.Configuration.AddCommandLine(args);
 
-    // 日誌設定
-    builder.Services.Configure<LogSettings>(
-        builder.Configuration.GetSection(LogSettings.SectionName));
-
-    var logSettings = builder.Configuration
-        .GetSection(LogSettings.SectionName)
-        .Get<LogSettings>()
-        ?? throw new InvalidOperationException($"設定區段 '{LogSettings.SectionName}' 不存在或無效。");
+    builder.Services.Configure<LogSettings>(builder.Configuration.GetSection(LogSettings.SectionName));
+    var logSettings = builder.Configuration.GetSection(LogSettings.SectionName).Get<LogSettings>()
+        ?? throw new InvalidOperationException($"Missing configuration section: {LogSettings.SectionName}");
 
     var minimumLevel = Enum.TryParse<LogEventLevel>(logSettings.MinimumLevel, ignoreCase: true, out var lvl)
         ? lvl
@@ -48,7 +48,6 @@ try
         ? logSettings.LogDirectory
         : Path.Combine(AppContext.BaseDirectory, logSettings.LogDirectory);
 
-    // Serilog 設定
     builder.Host.UseSerilog((_, _, config) =>
         config
             .MinimumLevel.Is(minimumLevel)
@@ -64,99 +63,34 @@ try
                 rollOnFileSizeLimit: true,
                 outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}"));
 
-    // Add services to the container.
+    builder.Services.Configure<ApiSettings>(builder.Configuration.GetSection(ApiSettings.SectionName));
+    var apiSettings = builder.Configuration.GetSection(ApiSettings.SectionName).Get<ApiSettings>()
+        ?? throw new InvalidOperationException($"Missing configuration section: {ApiSettings.SectionName}");
 
-    // API 設定
-    builder.Services.Configure<ApiSettings>(
-        builder.Configuration.GetSection(ApiSettings.SectionName));
-
-    var apiSettings = builder.Configuration
-        .GetSection(ApiSettings.SectionName)
-        .Get<ApiSettings>()
-        ?? throw new InvalidOperationException($"設定區段 '{ApiSettings.SectionName}' 不存在或無效。");
-
-    // HTTPS 設定
-    builder.Services.Configure<HttpsSettings>(
-        builder.Configuration.GetSection(HttpsSettings.SectionName));
-
-    var httpsSettings = builder.Configuration
-        .GetSection(HttpsSettings.SectionName)
-        .Get<HttpsSettings>()
-        ?? new HttpsSettings();
-
-    builder.Services.AddSingleton(httpsSettings);
-
-    if (!builder.Environment.IsDevelopment() && httpsSettings.EnforceHttps && string.IsNullOrWhiteSpace(httpsSettings.CertificatePath))
-        Log.Warning("正式環境啟用 HTTPS 但未設定 HttpsSettings.CertificatePath，請確認是否由反向代理終止 TLS。");
-
-    // 憑證設定：若有設定 PFX 路徑，則使用指定憑證。
-    // 未設定時，Development 可使用 dev certificate；正式環境建議透過環境變數提供。
-    builder.WebHost.ConfigureKestrel(options =>
-    {
-        if (string.IsNullOrWhiteSpace(httpsSettings.CertificatePath))
-            return;
-
-        if (!File.Exists(httpsSettings.CertificatePath))
-            throw new InvalidOperationException($"HTTPS 憑證檔不存在: {httpsSettings.CertificatePath}");
-
-        var certificate = X509CertificateLoader.LoadPkcs12FromFile(
-            httpsSettings.CertificatePath,
-            httpsSettings.CertificatePassword);
-
-        options.ConfigureHttpsDefaults(httpsOptions =>
-        {
-            httpsOptions.ServerCertificate = certificate;
-        });
-    });
-
-    // 時區設定
-    builder.Services.Configure<TimeZoneSettings>(
-        builder.Configuration.GetSection(TimeZoneSettings.SectionName));
-
-    var timeZoneSettings = builder.Configuration
-        .GetSection(TimeZoneSettings.SectionName)
-        .Get<TimeZoneSettings>()
-        ?? throw new InvalidOperationException($"設定區段 '{TimeZoneSettings.SectionName}' 不存在或無效。");
-
+    builder.Services.Configure<TimeZoneSettings>(builder.Configuration.GetSection(TimeZoneSettings.SectionName));
+    var timeZoneSettings = builder.Configuration.GetSection(TimeZoneSettings.SectionName).Get<TimeZoneSettings>()
+        ?? throw new InvalidOperationException($"Missing configuration section: {TimeZoneSettings.SectionName}");
     var appTimeZone = TimeZoneInfo.FindSystemTimeZoneById(timeZoneSettings.TimeZoneId);
     builder.Services.AddSingleton(appTimeZone);
 
-    // 資料庫設定
-    builder.Services.Configure<DatabaseSettings>(
-        builder.Configuration.GetSection(DatabaseSettings.SectionName));
-
-    var databaseSettings = builder.Configuration
-        .GetSection(DatabaseSettings.SectionName)
-        .Get<DatabaseSettings>()
-        ?? throw new InvalidOperationException($"設定區段 '{DatabaseSettings.SectionName}' 不存在或無效。");
-
+    builder.Services.Configure<DatabaseSettings>(builder.Configuration.GetSection(DatabaseSettings.SectionName));
+    var databaseSettings = builder.Configuration.GetSection(DatabaseSettings.SectionName).Get<DatabaseSettings>()
+        ?? throw new InvalidOperationException($"Missing configuration section: {DatabaseSettings.SectionName}");
     builder.Services.AddSingleton(databaseSettings);
 
-    // 背景工作佇列設定
-    builder.Services.Configure<BackgroundQueueSettings>(
-        builder.Configuration.GetSection(BackgroundQueueSettings.SectionName));
-
-    var backgroundQueueSettings = builder.Configuration
-        .GetSection(BackgroundQueueSettings.SectionName)
-        .Get<BackgroundQueueSettings>()
+    builder.Services.Configure<BackgroundQueueSettings>(builder.Configuration.GetSection(BackgroundQueueSettings.SectionName));
+    var backgroundQueueSettings = builder.Configuration.GetSection(BackgroundQueueSettings.SectionName).Get<BackgroundQueueSettings>()
         ?? new BackgroundQueueSettings();
+    ValidateBackgroundQueueSettings(backgroundQueueSettings);
 
-    if (backgroundQueueSettings.DefaultPollingIntervalSeconds <= 0)
-        throw new InvalidOperationException("BackgroundQueueSettings.DefaultPollingIntervalSeconds 必須大於 0。");
+    builder.Services.Configure<FileStorageSettings>(builder.Configuration.GetSection(FileStorageSettings.SectionName));
+    var fileStorageSettings = builder.Configuration.GetSection(FileStorageSettings.SectionName).Get<FileStorageSettings>()
+        ?? new FileStorageSettings();
+    ValidateFileStorageSettings(fileStorageSettings);
+    builder.Services.AddSingleton(fileStorageSettings);
 
-    if (backgroundQueueSettings.DefaultLockTimeoutSeconds <= 0)
-        throw new InvalidOperationException("BackgroundQueueSettings.DefaultLockTimeoutSeconds 必須大於 0。");
-
-    if (backgroundQueueSettings.DefaultMaxRetryCount < 0)
-        throw new InvalidOperationException("BackgroundQueueSettings.DefaultMaxRetryCount 不可小於 0。");
-
-    if (backgroundQueueSettings.ShutdownTimeoutSeconds <= 0)
-        throw new InvalidOperationException("BackgroundQueueSettings.ShutdownTimeoutSeconds 必須大於 0。");
-
-    // BusinessRule 服務（由 BusinessRule 統一註冊 DbContext / Token 撤銷 / 背景佇列 / 各業務服務）
     builder.Services.AddBusinessRuleServices(databaseSettings, backgroundQueueSettings);
 
-    // HTTPS / 反向代理設定：支援多層 LB 或 API Gateway 的 X-Forwarded-* 標頭。
     builder.Services.Configure<ForwardedHeadersOptions>(options =>
     {
         options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
@@ -164,149 +98,106 @@ try
         options.KnownProxies.Clear();
     });
 
-    builder.Services.AddHttpsRedirection(options =>
-    {
-        options.RedirectStatusCode = httpsSettings.RedirectStatusCode;
-    });
-
-    builder.Services.AddHsts(options =>
-    {
-        options.IncludeSubDomains = httpsSettings.HstsIncludeSubDomains;
-        options.Preload = httpsSettings.HstsPreload;
-        options.MaxAge = TimeSpan.FromDays(httpsSettings.HstsMaxAgeDays);
-    });
-
-    // JWT 設定
-    builder.Services.Configure<JwtSettings>(
-        builder.Configuration.GetSection(JwtSettings.SectionName));
-
-    var jwtSettings = builder.Configuration
-        .GetSection(JwtSettings.SectionName)
-        .Get<JwtSettings>()
-        ?? throw new InvalidOperationException($"設定區段 '{JwtSettings.SectionName}' 不存在或無效。");
-
-    builder.Services.AddSingleton(jwtSettings);
-
-    if (string.IsNullOrWhiteSpace(jwtSettings.SecretKey))
-        throw new InvalidOperationException("JwtSettings.SecretKey 未設定。");
-
-    var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey));
-
-    // Development 環境：自動以假用戶通過驗證，免登入即可呼叫所有 API。
-    // 若請求帶有 Authorization: Bearer Token，則仍走 JWT 驗證流程。
-    // Production 環境：必須提供有效 JWT Token。
     if (builder.Environment.IsDevelopment())
     {
-        var devUser = builder.Configuration
-            .GetSection(DevBypassUserSettings.SectionName)
-            .Get<DevBypassUserSettings>() ?? new DevBypassUserSettings();
+        var devUser = builder.Configuration.GetSection(DevBypassUserSettings.SectionName).Get<DevBypassUserSettings>()
+            ?? new DevBypassUserSettings();
         builder.Services.AddSingleton(devUser);
     }
 
-    var authBuilder = builder.Services
-        .AddAuthentication(options =>
+    var authBuilder = builder.Services.AddAuthentication(options =>
+    {
+        if (builder.Environment.IsDevelopment())
         {
-            if (builder.Environment.IsDevelopment())
-            {
-                options.DefaultAuthenticateScheme = DevBypassAuthenticationHandler.SchemeName;
-                options.DefaultChallengeScheme    = DevBypassAuthenticationHandler.SchemeName;
-            }
-            else
-            {
-                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultChallengeScheme    = JwtBearerDefaults.AuthenticationScheme;
-            }
-        });
+            options.DefaultAuthenticateScheme = DevBypassAuthenticationHandler.SchemeName;
+            options.DefaultChallengeScheme = DevBypassAuthenticationHandler.SchemeName;
+        }
+        else
+        {
+            options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        }
+    });
 
     if (builder.Environment.IsDevelopment())
         authBuilder.AddScheme<DevBypassAuthenticationOptions, DevBypassAuthenticationHandler>(
             DevBypassAuthenticationHandler.SchemeName, _ => { });
 
+    var jwtValidationSettings = GetRequiredJwtCoreSettings(builder.Configuration);
+
     authBuilder.AddJwtBearer(options =>
+    {
+        options.MapInboundClaims = false;
+        options.TokenValidationParameters = new TokenValidationParameters
         {
-            options.TokenValidationParameters = new TokenValidationParameters
-            {
-                ValidateIssuer           = true,
-                ValidateAudience         = true,
-                ValidateLifetime         = true,
-                ValidateIssuerSigningKey = true,
-                ValidIssuer              = jwtSettings.Issuer,
-                ValidAudience            = jwtSettings.Audience,
-                IssuerSigningKey         = signingKey,
-                ClockSkew                = TimeSpan.Zero
-            };
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            RequireSignedTokens = true,
+            ValidIssuer = jwtValidationSettings.Issuer,
+            ValidAudience = jwtValidationSettings.Audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtValidationSettings.SecretKey)),
+            ClockSkew = TimeSpan.FromMinutes(1)
+        };
 
-            options.Events = new JwtBearerEvents
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
             {
-                OnTokenValidated = context =>
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs/notifications"))
+                    context.Token = accessToken;
+
+                return Task.CompletedTask;
+            },
+            OnTokenValidated = async context =>
+            {
+                var tokenRevocationService = context.HttpContext.RequestServices.GetRequiredService<ITokenRevocationService>();
+                var tokenId = context.Principal?.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Jti)?.Value;
+                if (string.IsNullOrWhiteSpace(tokenId))
                 {
-                    var revocationService = context.HttpContext.RequestServices.GetRequiredService<ITokenRevocationService>();
-                    var tokenId = context.Principal?.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Jti)?.Value;
-
-                    if (!string.IsNullOrWhiteSpace(tokenId) && revocationService.IsRevoked(tokenId))
-                        context.Fail("Token 已登出或撤銷。");
-
-                    return Task.CompletedTask;
+                    context.Fail("Invalid token: missing jti.");
+                    return;
                 }
-            };
-        });
 
-    // Hash 設定
-    builder.Services.Configure<HashSettings>(
-        builder.Configuration.GetSection(HashSettings.SectionName));
+                if (tokenRevocationService.IsRevoked(tokenId))
+                {
+                    context.Fail("Token revoked.");
+                    return;
+                }
 
-    var hashSettings = builder.Configuration
-        .GetSection(HashSettings.SectionName)
-        .Get<HashSettings>()
-        ?? throw new InvalidOperationException($"設定區段 '{HashSettings.SectionName}' 不存在或無效。");
+                await Task.CompletedTask;
+            }
+        };
+    });
 
+    builder.Services.Configure<HashSettings>(builder.Configuration.GetSection(HashSettings.SectionName));
+    var hashSettings = builder.Configuration.GetSection(HashSettings.SectionName).Get<HashSettings>()
+        ?? throw new InvalidOperationException($"Missing configuration section: {HashSettings.SectionName}");
     if (hashSettings.Iterations < 10000)
-        throw new InvalidOperationException("HashSettings.Iterations 必須大於等於 10000。");
-
+        throw new InvalidOperationException("HashSettings.Iterations must be at least 10000.");
     builder.Services.AddSingleton(hashSettings);
 
-    // 加解密金鑰設定
-    builder.Services.Configure<CryptographyKeySettings>(
-        builder.Configuration.GetSection(CryptographyKeySettings.SectionName));
-
-    var cryptographyKeySettings = builder.Configuration
-        .GetSection(CryptographyKeySettings.SectionName)
-        .Get<CryptographyKeySettings>()
-        ?? throw new InvalidOperationException($"設定區段 '{CryptographyKeySettings.SectionName}' 不存在或無效。");
-
+    builder.Services.Configure<CryptographyKeySettings>(builder.Configuration.GetSection(CryptographyKeySettings.SectionName));
+    var cryptographyKeySettings = builder.Configuration.GetSection(CryptographyKeySettings.SectionName).Get<CryptographyKeySettings>()
+        ?? throw new InvalidOperationException($"Missing configuration section: {CryptographyKeySettings.SectionName}");
+    cryptographyKeySettings.RsaPublicKeyPem = NormalizeEscapedNewLines(cryptographyKeySettings.RsaPublicKeyPem);
+    cryptographyKeySettings.RsaPrivateKeyPem = NormalizeEscapedNewLines(cryptographyKeySettings.RsaPrivateKeyPem);
     builder.Services.AddSingleton(cryptographyKeySettings);
 
     builder.Services.AddHttpContextAccessor();
-
-    // Token 撤銷策略警告（LogConnectionString 為空時降級至 In-Memory）
-    if (string.IsNullOrWhiteSpace(databaseSettings.LogConnectionString))
-        Log.Warning("DatabaseSettings.LogConnectionString 未設定，Token 撤銷將使用 In-Memory（不支援多節點共用）。");
-
-    // CurrentUserService：從 JWT Claims 解析當前登入者資訊，供邏輯層注入使用
     builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
-    // JwtService：產生 JWT Token（含 UserId / Email / MobilePhone / DeptId / IP 等 Claims）
-    // Auth：POST /Auth/Login（登入）、POST /Auth/Logout（登出撤銷）
     builder.Services.AddScoped<IJwtService, JwtService>();
-
     builder.Services.AddAuthorization();
+    builder.Services.AddSignalRInfrastructure();
 
-    // Health Check：K8s liveness/readiness probe、負載均衡器心跳偵測
-    // GET /health → 200 Healthy / 503 Unhealthy（不需驗證，基礎設施直接呼叫）
-    builder.Services.AddHealthChecks()
-        .AddBusinessRuleHealthChecks(databaseSettings);
+    builder.Services.AddHealthChecks().AddBusinessRuleHealthChecks(databaseSettings);
 
-    // CORS 設定
-    builder.Services.Configure<CorsSettings>(
-        builder.Configuration.GetSection(CorsSettings.SectionName));
-
-    var corsSettings = builder.Configuration
-        .GetSection(CorsSettings.SectionName)
-        .Get<CorsSettings>() ?? new CorsSettings();
-
+    builder.Services.Configure<CorsSettings>(builder.Configuration.GetSection(CorsSettings.SectionName));
+    var corsSettings = builder.Configuration.GetSection(CorsSettings.SectionName).Get<CorsSettings>() ?? new CorsSettings();
     builder.Services.AddSingleton(corsSettings);
-
-    if (corsSettings.AllowCredentials && corsSettings.AllowAnyOrigin)
-        Log.Warning("CorsSettings: AllowCredentials=true 與 AllowAnyOrigin=true 不相容，AllowCredentials 將被忽略。");
 
     const string DefaultCorsPolicy = "DefaultCorsPolicy";
     builder.Services.AddCors(options =>
@@ -320,14 +211,12 @@ try
             else if (corsSettings.AllowedOrigins.Length > 0)
             {
                 policy.WithOrigins(corsSettings.AllowedOrigins);
-
                 if (corsSettings.AllowCredentials)
                     policy.AllowCredentials();
             }
             else
             {
-                // 未設定任何來源 → 不允許任何跨域請求（安全預設值）
-                policy.WithOrigins();
+                // No allowed origins configured: leave origins unset to deny cross-origin requests by default.
             }
 
             policy.AllowAnyMethod().AllowAnyHeader();
@@ -356,7 +245,6 @@ try
         if (File.Exists(xmlPath))
             options.IncludeXmlComments(xmlPath, includeControllerXmlComments: true);
 
-        // 加入 Bearer Token 輸入框
         options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
         {
             Name = "Authorization",
@@ -364,10 +252,9 @@ try
             Scheme = "bearer",
             BearerFormat = "JWT",
             In = ParameterLocation.Header,
-            Description = "請輸入 JWT Token（不需加 Bearer 前綴）"
+            Description = "Use: Bearer {token}"
         });
 
-        // 全域套用 Bearer 驗證
         options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
         {
             [new OpenApiSecuritySchemeReference("Bearer", document)] = []
@@ -376,7 +263,6 @@ try
 
     var app = builder.Build();
 
-    // Configure the HTTP request pipeline.
     if (app.Environment.IsDevelopment())
     {
         app.UseSwagger();
@@ -387,13 +273,9 @@ try
         });
     }
 
-    // 先處理 Forwarded Headers，避免 HTTPS 重新導向與來源 IP 判斷錯誤。
     app.UseForwardedHeaders();
-
-    // 將 HTTP 請求記錄路由至 Serilog ILogger
     app.UseSerilogRequestLogging();
 
-    // Middleware 層全域例外處理：覆蓋整條管線（含 MVC 之外的錯誤）。
     app.UseExceptionHandler(errorApp =>
     {
         errorApp.Run(async context =>
@@ -402,55 +284,198 @@ try
             var feature = context.Features.Get<IExceptionHandlerFeature>();
             var exception = feature?.Error;
             var mvcJsonOptions = context.RequestServices.GetRequiredService<IOptions<JsonOptions>>();
-
-            var request = context.Request;
             var userId = context.User.FindFirst(ClaimTypes.Name)?.Value ?? string.Empty;
             var tokenId = context.User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Jti)?.Value ?? string.Empty;
 
             logger.LogError(
                 exception,
-                "Unhandled exception by middleware. TraceId={TraceId}, Method={Method}, Path={Path}, QueryString={QueryString}, UserId={UserId}, TokenId={TokenId}, Ip={Ip}",
+                "Unhandled exception. TraceId={TraceId}, Method={Method}, Path={Path}, QueryString={QueryString}, UserId={UserId}, TokenId={TokenId}, Ip={Ip}",
                 context.TraceIdentifier,
-                request.Method,
-                request.Path.Value,
-                request.QueryString.Value,
+                context.Request.Method,
+                context.Request.Path.Value,
+                context.Request.QueryString.Value,
                 userId,
                 tokenId,
                 context.Connection.RemoteIpAddress?.ToString());
 
             context.Response.StatusCode = StatusCodes.Status500InternalServerError;
             context.Response.ContentType = "application/json; charset=utf-8";
-
-            var payload = ResponseMessage<object>.Fail(500, "系統發生未預期錯誤，請稍後再試。");
+            var payload = ResponseMessage<object>.Fail(500, "Internal server error.");
             await context.Response.WriteAsync(JsonSerializer.Serialize(payload, mvcJsonOptions.Value.JsonSerializerOptions));
         });
     });
 
-    if (httpsSettings.EnforceHttps && httpsSettings.HstsEnabled && !app.Environment.IsDevelopment())
-        app.UseHsts();
-
-    if (httpsSettings.EnforceHttps)
-        app.UseHttpsRedirection();
-
     app.UseStaticFiles();
-
     app.UseCors(DefaultCorsPolicy);
-
     app.UseAuthentication();
     app.UseAuthorization();
-
-    // Health Check 端點（公開，不需 JWT）
     app.MapHealthChecks("/health").AllowAnonymous();
-
+    app.MapSignalRInfrastructure();
     app.MapControllers();
-
     app.Run();
 }
 catch (Exception ex)
 {
-    Log.Fatal(ex, "應用程式啟動失敗");
+    Log.Fatal(ex, "Application terminated unexpectedly.");
 }
 finally
 {
     await Log.CloseAndFlushAsync();
+}
+
+static void ValidateBackgroundQueueSettings(BackgroundQueueSettings settings)
+{
+    if (settings.DefaultPollingIntervalSeconds <= 0)
+        throw new InvalidOperationException("BackgroundQueueSettings.DefaultPollingIntervalSeconds must be greater than zero.");
+
+    if (settings.DefaultLockTimeoutSeconds <= 0)
+        throw new InvalidOperationException("BackgroundQueueSettings.DefaultLockTimeoutSeconds must be greater than zero.");
+
+    if (settings.DefaultMaxRetryCount < 0)
+        throw new InvalidOperationException("BackgroundQueueSettings.DefaultMaxRetryCount must be greater than or equal to zero.");
+
+    if (settings.ShutdownTimeoutSeconds <= 0)
+        throw new InvalidOperationException("BackgroundQueueSettings.ShutdownTimeoutSeconds must be greater than zero.");
+}
+
+static void ValidateFileStorageSettings(FileStorageSettings settings)
+{
+    if (!settings.Enabled)
+        return;
+
+    if (string.IsNullOrWhiteSpace(settings.Provider))
+        throw new InvalidOperationException("FileStorageSettings.Provider is required when file storage is enabled.");
+
+    if (!settings.EnableSingleUpload && !settings.EnableChunkUpload)
+        throw new InvalidOperationException("At least one upload mode must be enabled (single or chunk).");
+
+    if (!settings.EnableAdminScope && !settings.EnablePersonalScope)
+        throw new InvalidOperationException("At least one file scope must be enabled (admin or personal).");
+
+    if (settings.MaxFileSizeMb <= 0)
+        throw new InvalidOperationException("FileStorageSettings.MaxFileSizeMb must be greater than zero.");
+
+    if (settings.MaxSingleUploadSizeMb <= 0)
+        throw new InvalidOperationException("FileStorageSettings.MaxSingleUploadSizeMb must be greater than zero.");
+
+    if (settings.MaxSingleUploadSizeMb > settings.MaxFileSizeMb)
+        throw new InvalidOperationException("FileStorageSettings.MaxSingleUploadSizeMb cannot exceed MaxFileSizeMb.");
+
+    if (settings.MaxChunkSizeMb <= 0)
+        throw new InvalidOperationException("FileStorageSettings.MaxChunkSizeMb must be greater than zero.");
+
+    if (settings.MaxChunkCountPerFile <= 0)
+        throw new InvalidOperationException("FileStorageSettings.MaxChunkCountPerFile must be greater than zero.");
+
+    var maxChunkUploadMb = (long)settings.MaxChunkSizeMb * settings.MaxChunkCountPerFile;
+    if (maxChunkUploadMb < settings.MaxFileSizeMb)
+        throw new InvalidOperationException("Chunk capacity (MaxChunkSizeMb * MaxChunkCountPerFile) must be >= MaxFileSizeMb.");
+
+    if (settings.ChunkSessionExpireMinutes <= 0)
+        throw new InvalidOperationException("FileStorageSettings.ChunkSessionExpireMinutes must be greater than zero.");
+
+    if (settings.DownloadUrlExpireSeconds <= 0)
+        throw new InvalidOperationException("FileStorageSettings.DownloadUrlExpireSeconds must be greater than zero.");
+}
+
+static void LoadDotEnv(string contentRootPath, string environmentName)
+{
+    var paths = new[]
+    {
+        Path.Combine(contentRootPath, ".env"),
+        Path.Combine(contentRootPath, $".env.{environmentName}")
+    };
+
+    var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    foreach (var path in paths)
+    {
+        if (!File.Exists(path))
+            continue;
+
+        foreach (var pair in ReadDotEnv(path))
+            values[pair.Key] = pair.Value;
+    }
+
+    foreach (var pair in values)
+    {
+        if (Environment.GetEnvironmentVariable(pair.Key) is null)
+            Environment.SetEnvironmentVariable(pair.Key, pair.Value);
+    }
+}
+
+static Dictionary<string, string> ReadDotEnv(string path)
+{
+    var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+    foreach (var rawLine in File.ReadAllLines(path))
+    {
+        var line = rawLine.Trim();
+        if (line.Length == 0 || line.StartsWith('#'))
+            continue;
+
+        if (line.StartsWith("export ", StringComparison.OrdinalIgnoreCase))
+            line = line[7..].TrimStart();
+
+        var equalsIndex = line.IndexOf('=');
+        if (equalsIndex <= 0)
+            continue;
+
+        var key = line[..equalsIndex].Trim();
+        var value = line[(equalsIndex + 1)..].Trim();
+        if (key.Length == 0)
+            continue;
+
+        values[key] = UnquoteDotEnvValue(value);
+    }
+
+    return values;
+}
+
+static string UnquoteDotEnvValue(string value)
+{
+    if (value.Length >= 2 && value[0] == '"' && value[^1] == '"')
+    {
+        return value[1..^1]
+            .Replace("\\n", "\n")
+            .Replace("\\r", "\r")
+            .Replace("\\t", "\t")
+            .Replace("\\\"", "\"")
+            .Replace("\\\\", "\\");
+    }
+
+    if (value.Length >= 2 && value[0] == '\'' && value[^1] == '\'')
+        return value[1..^1];
+
+    return value;
+}
+
+static string NormalizeEscapedNewLines(string value)
+{
+    return value.Replace("\\r\\n", "\n").Replace("\\n", "\n");
+}
+
+static JwtSettingDto GetRequiredJwtCoreSettings(IConfiguration configuration)
+{
+    var secretKey = configuration["JwtSettings:SecretKey"]?.Trim();
+    var issuer = configuration["JwtSettings:Issuer"]?.Trim();
+    var audience = configuration["JwtSettings:Audience"]?.Trim();
+
+    if (string.IsNullOrWhiteSpace(secretKey))
+        throw new InvalidOperationException("Missing required JWT setting: JwtSettings:SecretKey.");
+
+    if (string.IsNullOrWhiteSpace(issuer))
+        throw new InvalidOperationException("Missing required JWT setting: JwtSettings:Issuer.");
+
+    if (string.IsNullOrWhiteSpace(audience))
+        throw new InvalidOperationException("Missing required JWT setting: JwtSettings:Audience.");
+
+    if (Encoding.UTF8.GetByteCount(secretKey) < 32)
+        throw new InvalidOperationException("JwtSettings:SecretKey must be at least 32 bytes.");
+
+    return new JwtSettingDto
+    {
+        SecretKey = secretKey,
+        Issuer = issuer,
+        Audience = audience
+    };
 }

@@ -1,68 +1,212 @@
-# UserService 說明文件
+﻿# UserService 使用者服務
 
-[← 返回方案 README](../../../README.md) ｜ [← 返回 Template.BusinessRule](../../README.md)
+[專案 README](../../../README.md) / [BusinessRule README](../../README.md)
 
-## 概述
+## 功能說明
 
-`UserService` 提供系統使用者的基本管理能力，涵蓋：
+`UserService` 負責系統使用者資料管理，包含使用者 CRUD、部門關聯、密碼重設與密碼變更。
 
-- 查詢清單（關鍵字、啟用狀態篩選）
-- 查詢單筆
-- 新增使用者
-- 更新使用者基本資料
+- 使用者清單查詢
+- 使用者單筆查詢
+- 建立使用者
+- 更新使用者基本資料與所屬部門
 - 刪除使用者
 - 重設密碼
-- 修改密碼
+- 使用者變更密碼
 
-密碼傲存與驗證均透過 `IPasswordManager`（PBKDF2 雜湊）處理，並強制密碼規則驗證。密碼變更分為兩種情境：
+使用者資料透過 `DeptId` 對應 `Sys_Department.DeptId`。建立與更新使用者時，服務會檢查部門是否存在；清單輸出會回傳 `DeptName` 方便前端顯示。
 
-- **ResetPassword**：管理員強制變更，不需舊密碼。
-- **ChangePassword**：使用者自行變更，需驗證舊密碼（`Verify`）再對新密碼執行規則驗證。
+## 密碼歷程
 
----
+使用者主檔 `Sys_UserInfo` 只保存目前密碼雜湊值；每次建立、重設或變更密碼時，服務會同步寫入 `Sys_UserPasswordHistory`。
 
-## 介面與實作位置
+密碼歷程用途：
 
-| 類型 | 位置 |
+- 記錄密碼異動時間與異動人員。
+- 透過 `ChangeType` 區分初始建立、管理員重設、使用者自行變更。
+- 登入時用最後一筆 `ChangedTime` 判斷密碼是否過期。
+- 日後若要限制不可重複使用最近 N 次密碼，可直接查詢歷程表。
+
+同時，建立使用者、重設密碼、變更密碼也會透過 `LogService` 寫入稽核日誌。稽核日誌只記錄異動種類與目標使用者，不寫入密碼明文或密碼雜湊。
+
+## 檔案位置
+
+| 類型 | 路徑 |
 |---|---|
-| 介面 | `Template.Common/Services/IUserService.cs` |
-| 實作 | `Template.BusinessRule/UserService/Services/UserService.cs` |
-| API 入口 | `Template.WebApi/Controllers/UserController.cs` |
+| 介面 | `Template.BusinessRule/UserService/Services/IUserService.cs` |
+| Request/DTO | `Template.Common/Models/User` |
+| 服務實作 | `Template.BusinessRule/UserService/Services/UserService.cs` |
+| API Controller | `Template.WebApi/Controllers/UserController.cs` |
+| 測試 | `Template.Test/Tests/UserServiceTests.cs` |
+| 使用者 Entity | `Template.DataAccess/ProjectDbContext/Sys_UserInfo.cs` |
+| 密碼歷程 Entity | `Template.DataAccess/ProjectDbContext/Sys_UserPasswordHistory.cs` |
+| 部門 Entity | `Template.DataAccess/ProjectDbContext/Sys_Department.cs` |
 
----
-
-## 方法一覽
+## 服務方法
 
 | 方法 | 說明 |
 |---|---|
-| `GetListAsync(string? keyword, bool? isEnable)` | 依關鍵字（UserId/Email/MobilePhone/DeptId）與啟用狀態篩選 |
-| `GetByIdAsync(int id)` | 依主鍵取得單筆使用者 |
-| `CreateAsync(UserCreateRequest request)` | 建立使用者，密碼會先雜湊 |
-| `UpdateAsync(UserUpdateRequest request)` | 更新基本資料（不含密碼） |
+| `GetListAsync(keyword, isEnable, deptId, includeSubDepartments)` | 查詢使用者清單，支援關鍵字、啟用狀態、部門與子部門篩選 |
+| `GetByIdAsync(int id)` | 依 Id 查詢單筆使用者 |
+| `CreateAsync(UserCreateRequest request)` | 建立使用者、雜湊密碼並寫入密碼歷程 |
+| `UpdateAsync(UserUpdateRequest request)` | 更新姓名、部門、電話、Email 與啟用狀態 |
 | `DeleteAsync(int id)` | 刪除使用者 |
-| `ResetPasswordAsync(UserResetPasswordRequest request)` | 重設密碼（管理員強制變更，不需舊密碼） |
-| `ChangePasswordAsync(UserChangePasswordRequest request)` | 修改密碼（需驗證舊密碼 + 新密碼規則驗證） |
+| `ResetPasswordAsync(UserResetPasswordRequest request)` | 管理員重設密碼，清除登入失敗次數並寫入密碼歷程 |
+| `ChangePasswordAsync(UserChangePasswordRequest request)` | 驗證舊密碼後變更密碼並寫入密碼歷程 |
 
----
+> 上述建立、更新、刪除、重設密碼、變更密碼流程會同步寫入 `UserOperationLog`，方便日後追查管理員操作與使用者密碼異動。
 
-## 重要規則
+## 部門規則
 
-- `CreateAsync`：`UserId` 不可重複。
-- `CreateAsync` / `ResetPasswordAsync`：密碼不可空白。
-- `ChangePasswordAsync`：舊密碼驗證失敗時丟出 `UnauthorizedAccessException`；新密碼不符規則丟出 `ArgumentException`。
-- `UpdateAsync` / `DeleteAsync` / `ResetPasswordAsync` / `ChangePasswordAsync`：若查無資料回傳 `false`。
-- 所有 `id <= 0` 請求會丟出 `ArgumentException`。
+- `UserCreateRequest.DeptId` 與 `UserUpdateRequest.DeptId` 必須大於 0。
+- 建立或更新使用者時，`DeptId` 必須存在於 `Sys_Department`。
+- `UserDto` 會回傳 `DeptId` 與 `DeptName`。
+- `GetListAsync` 可用 `deptId` 查詢單一部門使用者。
+- `includeSubDepartments=true` 時，會包含指定部門底下所有子部門的使用者。
 
----
-
-## API 對應
+## API
 
 | API | 說明 |
 |---|---|
-| `GET /User/List` | 取得清單 |
-| `GET /User/GetById?id=1` | 取得單筆 |
-| `POST /User/Create` | 新增使用者 |
-| `PUT /User/Update` | 更新資料 |
+| `GET /User/List?keyword=&isEnable=&deptId=&includeSubDepartments=` | 查詢使用者清單 |
+| `GET /User/GetById?id=1` | 查詢單筆使用者 |
+| `POST /User/Create` | 建立使用者 |
+| `PUT /User/Update` | 更新使用者 |
 | `DELETE /User/Delete?id=1` | 刪除使用者 |
 | `POST /User/ResetPassword` | 重設密碼 |
-| `POST /User/ChangePassword` | 修改密碼（需舊密碼） |
+| `POST /User/ChangePassword` | 變更密碼 |
+
+## Request 範例
+
+```json
+{
+  "UserId": "alice",
+  "UserName": "Alice",
+  "Password": "ValidPass@123",
+  "DeptId": 1,
+  "MobilePhone": "0911222333",
+  "Email": "alice@example.com",
+  "IsEnable": true
+}
+```
+
+## Response 範例
+
+```json
+{
+  "Id": 1,
+  "UserId": "alice",
+  "UserName": "Alice",
+  "DeptId": 1,
+  "DeptName": "資訊部",
+  "MobilePhone": "0911222333",
+  "Email": "alice@example.com",
+  "LoginFailCount": 0,
+  "IsEnable": true,
+  "LastLoginTime": null,
+  "LastLoginIp": "",
+  "CreatedTime": "2026-05-15T07:00:00Z",
+  "UpdatedTime": "2026-05-15T07:00:00Z"
+}
+```
+
+## 既有資料庫啟用密碼歷程
+
+既有資料庫若已經有 `Sys_UserInfo.Password`，請先建立 `Sys_UserPasswordHistory`，再把目前密碼補成第一筆歷程。若資料庫先前曾加過 `PasswordUpdatedTime`，這段 SQL 會用它作為 `ChangedTime` 後移除該欄位；若沒有該欄位，會用 `UpdatedTime` 或 `CreatedTime` 補歷程時間。
+
+```sql
+IF OBJECT_ID(N'dbo.Sys_UserPasswordHistory', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.Sys_UserPasswordHistory
+    (
+        Id BIGINT IDENTITY(1,1) NOT NULL,
+        UserId NVARCHAR(50) NOT NULL,
+        PasswordHash NVARCHAR(500) NOT NULL,
+        ChangeType INT NOT NULL CONSTRAINT DF_Sys_UserPasswordHistory_ChangeType DEFAULT (1),
+        ChangedTime DATETIME2(7) NOT NULL CONSTRAINT DF_Sys_UserPasswordHistory_ChangedTime DEFAULT (SYSUTCDATETIME()),
+        ChangedId NVARCHAR(50) NOT NULL,
+        CONSTRAINT PK_Sys_UserPasswordHistory PRIMARY KEY CLUSTERED (Id)
+    );
+
+    CREATE INDEX IX_Sys_UserPasswordHistory_UserId_ChangedTime
+        ON dbo.Sys_UserPasswordHistory (UserId, ChangedTime DESC);
+END;
+
+IF COL_LENGTH(N'dbo.Sys_UserPasswordHistory', N'ChangeType') IS NULL
+BEGIN
+    ALTER TABLE dbo.Sys_UserPasswordHistory
+        ADD ChangeType INT NOT NULL
+            CONSTRAINT DF_Sys_UserPasswordHistory_ChangeType DEFAULT (1);
+END;
+
+IF EXISTS (
+    SELECT 1
+    FROM sys.foreign_keys
+    WHERE name = N'FK_Sys_UserPasswordHistory_UserId'
+      AND parent_object_id = OBJECT_ID(N'dbo.Sys_UserPasswordHistory')
+)
+BEGIN
+    ALTER TABLE dbo.Sys_UserPasswordHistory
+        DROP CONSTRAINT FK_Sys_UserPasswordHistory_UserId;
+END;
+
+IF COL_LENGTH(N'dbo.Sys_UserInfo', N'PasswordUpdatedTime') IS NOT NULL
+BEGIN
+    EXEC(N'
+        INSERT INTO dbo.Sys_UserPasswordHistory (UserId, PasswordHash, ChangeType, ChangedTime, ChangedId)
+        SELECT u.UserId,
+               u.Password,
+               1,
+               CASE
+                   WHEN u.PasswordUpdatedTime IS NULL OR u.PasswordUpdatedTime = CONVERT(DATETIME2(7), ''0001-01-01'')
+                       THEN ISNULL(NULLIF(u.UpdatedTime, CONVERT(DATETIME2(7), ''0001-01-01'')), u.CreatedTime)
+                   ELSE u.PasswordUpdatedTime
+               END,
+               ISNULL(NULLIF(u.UpdatedId, ''''), ISNULL(NULLIF(u.CreatedId, ''''), ''system''))
+        FROM dbo.Sys_UserInfo u
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM dbo.Sys_UserPasswordHistory h
+            WHERE h.UserId = u.UserId
+        );
+    ');
+
+    DECLARE @passwordUpdatedTimeDefaultName SYSNAME;
+
+    SELECT @passwordUpdatedTimeDefaultName = dc.name
+    FROM sys.default_constraints dc
+    INNER JOIN sys.columns c
+        ON c.default_object_id = dc.object_id
+    WHERE dc.parent_object_id = OBJECT_ID(N'dbo.Sys_UserInfo')
+      AND c.name = N'PasswordUpdatedTime';
+
+    IF @passwordUpdatedTimeDefaultName IS NOT NULL
+    BEGIN
+        EXEC(N'ALTER TABLE dbo.Sys_UserInfo DROP CONSTRAINT ' + QUOTENAME(@passwordUpdatedTimeDefaultName));
+    END;
+
+    ALTER TABLE dbo.Sys_UserInfo
+        DROP COLUMN PasswordUpdatedTime;
+END
+ELSE
+BEGIN
+    INSERT INTO dbo.Sys_UserPasswordHistory (UserId, PasswordHash, ChangeType, ChangedTime, ChangedId)
+    SELECT u.UserId,
+           u.Password,
+           1,
+           ISNULL(NULLIF(u.UpdatedTime, CONVERT(DATETIME2(7), '0001-01-01')), u.CreatedTime),
+           ISNULL(NULLIF(u.UpdatedId, ''), ISNULL(NULLIF(u.CreatedId, ''), 'system'))
+    FROM dbo.Sys_UserInfo u
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM dbo.Sys_UserPasswordHistory h
+        WHERE h.UserId = u.UserId
+    );
+END;
+
+IF COL_LENGTH(N'dbo.Sys_UserInfo', N'LockoutEndTime') IS NOT NULL
+BEGIN
+    ALTER TABLE dbo.Sys_UserInfo
+        DROP COLUMN LockoutEndTime;
+END;
+```

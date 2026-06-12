@@ -1,6 +1,6 @@
 # ClockUtil 時間日期工具
 
-[回到 Template.Common](../../README.md)
+[← 返回方案 README](../../../README.md) ｜ [← 返回上層 README](../../README.md)
 
 `ClockUtil` 集中放置常用時間日期格式、解析、格式化與型別轉換工具，適用於 `DateTime`、`DateTimeOffset`、`DateOnly`、`TimeOnly`。
 

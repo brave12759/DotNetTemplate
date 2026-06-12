@@ -12,6 +12,7 @@ namespace Template.DataAccess.ProjectDbContext;
 /// 系統使用者資訊表
 /// </summary>
 [Table("Sys_UserInfo")]
+[Index("DeptId", Name = "IX_Sys_UserInfo_DeptId")]
 [Index("Email", Name = "IX_Sys_UserInfo_Email")]
 [Index("IsEnable", Name = "IX_Sys_UserInfo_IsEnable")]
 [Index("UserId", Name = "UQ_Sys_UserInfo_UserId", IsUnique = true)]
@@ -41,9 +42,10 @@ public partial class Sys_UserInfo
     [StringLength(500)]
     public string Password { get; set; }
 
-    [Required]
-    [StringLength(50)]
-    public string DeptId { get; set; }
+    /// <summary>
+    /// 使用者所屬部門 ID。
+    /// </summary>
+    public int DeptId { get; set; }
 
     [Required]
     [StringLength(20)]
@@ -100,4 +102,7 @@ public partial class Sys_UserInfo
     [Required]
     [StringLength(50)]
     public string UpdatedId { get; set; }
+
+    [InverseProperty("User")]
+    public virtual ICollection<Sys_UserRoleGroup> Sys_UserRoleGroups { get; set; } = new List<Sys_UserRoleGroup>();
 }

@@ -207,6 +207,9 @@ public class CryptographyService : ICryptographyService
     /// <param name="value">Base64 字串。</param>
     /// <param name="parameterName">來源參數名稱。</param>
     /// <returns>解碼後位元組陣列。</returns>
+    /// <summary>
+    /// 解碼 Base64 字串；格式錯誤時用參數名稱回報例外。
+    /// </summary>
     private static byte[] DecodeBase64(string value, string parameterName)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(value);
@@ -227,6 +230,9 @@ public class CryptographyService : ICryptographyService
     /// <param name="value">設定值。</param>
     /// <param name="fieldName">設定欄位名稱。</param>
     /// <returns>非空設定值。</returns>
+    /// <summary>
+    /// 取得必要字串設定值；空白時丟出欄位名稱對應的例外。
+    /// </summary>
     private static string GetRequiredValue(string value, string fieldName)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -240,6 +246,9 @@ public class CryptographyService : ICryptographyService
     /// </summary>
     /// <param name="key">AES 金鑰位元組。</param>
     /// <param name="iv">AES IV 位元組。</param>
+    /// <summary>
+    /// 驗證 AES 金鑰與 IV 長度是否符合支援規格。
+    /// </summary>
     private static void ValidateAesKeyAndIv(byte[] key, byte[] iv)
     {
         if (key.Length is not (16 or 24 or 32))

@@ -26,6 +26,11 @@ public class LoginResult
     public bool AccountDisabled { get; init; }
 
     /// <summary>
+    /// 密碼是否已過期，需要變更密碼後才能登入。
+    /// </summary>
+    public bool PasswordExpired { get; init; }
+
+    /// <summary>
     /// 建立登入成功結果。
     /// </summary>
     public static LoginResult Ok(string token) =>
@@ -42,4 +47,10 @@ public class LoginResult
     /// </summary>
     public static LoginResult AccountLockedOut(string message) =>
         new() { Success = false, ErrorMessage = message, AccountDisabled = true };
+
+    /// <summary>
+    /// 建立密碼過期的登入失敗結果。
+    /// </summary>
+    public static LoginResult PasswordExpiredResult(string message) =>
+        new() { Success = false, ErrorMessage = message, PasswordExpired = true };
 }

@@ -1,35 +1,25 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Template.BusinessRule.LoginService.Services;
 using Template.Common.Services;
 using Template.WebApi.Models.Auth;
-// 啟用登入後回傳選單樹時取消註解：
-// using Template.BusinessRule.MenuTreeService.Services;
 
 namespace Template.WebApi.Controllers;
 
 /// <summary>
-/// 認證控制器，提供登入與登出。
+/// 驗證與登入狀態 API。
 /// </summary>
-/// <remarks>
-/// 建立認證控制器。
-/// </remarks>
 public class AuthController(
     ILogger<AuthController> logger,
     ILoginService loginService,
-    ICurrentUserService currentUserService
-    // 啟用登入後回傳選單樹時取消註解，並確認已註冊 IMenuTreeService：
-    // , IMenuTreeService menuTreeService
-    ) : BaseController<AuthController>(logger)
+    ICurrentUserService currentUserService) : BaseController<AuthController>(logger)
 {
     private readonly ILoginService _loginService = loginService;
     private readonly ICurrentUserService _currentUserService = currentUserService;
-    // 啟用登入後回傳選單樹時取消註解：
-    // private readonly IMenuTreeService _menuTreeService = menuTreeService;
 
     /// <summary>
-    /// 使用帳號密碼登入，成功後回傳 JWT Token。
+    /// 使用者以帳號密碼登入並取得 JWT Token。
     /// </summary>
-    /// <param name="request">登入請求。</param>
     [AllowAnonymous]
     [HttpPost]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
@@ -38,25 +28,48 @@ public class AuthController(
         var result = await _loginService.LoginAsync(request.UserId, request.Password, ip);
 
         if (!result.Success)
-        {
-            if (result.AccountDisabled)
-                return StatusCode(StatusCodes.Status403Forbidden, result.ErrorMessage);
+            return ToLoginFailure(result);
 
-            return Unauthorized(result.ErrorMessage);
-        }
+        return Ok(new AuthTokenResponse { Token = result.Token });
+    }
 
-        // 預設只回傳 JWT Token。
-        // 若專案啟用 MenuTreeService，且需要登入後一併回傳選單樹，可取消註解下列區塊。
-        // 注意：前端路由與元件對應由前端自行維護，後端只回傳選單節點、階層、排序與啟用狀態。
-        //
-        // var menuTree = await _menuTreeService.GetTreeAsync(isEnable: true);
-        // return Ok(new
-        // {
-        //     Token = result.Token,
-        //     MenuTree = menuTree
-        // });
+    /// <summary>
+    /// 使用目前仍有效的 JWT Token 換取新的 JWT Token，讓前端可在 Token 到期前維持登入狀態。
+    /// </summary>
+    /// <remarks>
+    /// 此 API 需要在舊 Token 尚未過期前呼叫。刷新成功後，舊 Token 會被撤銷，前端應改用回傳的新 Token。
+    /// </remarks>
+    [Authorize]
+    [HttpPost]
+    public async Task<IActionResult> Refresh()
+    {
+        var currentUser = _currentUserService.CurrentUser;
+        if (string.IsNullOrWhiteSpace(currentUser.UserId) ||
+            string.IsNullOrWhiteSpace(currentUser.TokenId) ||
+            currentUser.ExpiredTime <= 0)
+            return BadRequest("Token 資訊不完整，無法刷新。");
 
-        return Ok(new { Token = result.Token });
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
+        var result = await _loginService.RefreshAsync(
+            currentUser.UserId,
+            currentUser.TokenId,
+            currentUser.ExpiredTime,
+            ip);
+
+        if (!result.Success)
+            return ToLoginFailure(result);
+
+        return Ok(new AuthTokenResponse { Token = result.Token });
+    }
+
+    /// <summary>
+    /// 取得目前 Token 對應的登入者資訊，供前端重整頁面後還原登入狀態。
+    /// </summary>
+    [Authorize]
+    [HttpGet]
+    public IActionResult Me()
+    {
+        return Ok(_currentUserService.CurrentUser);
     }
 
     /// <summary>
@@ -68,13 +81,27 @@ public class AuthController(
     {
         if (!Request.Headers.TryGetValue("Authorization", out var authHeader)
             || !authHeader.ToString().StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-            return BadRequest("缺少 Bearer Token，無法執行登出。");
+            return BadRequest("缺少 Bearer Token。");
 
         var currentUser = _currentUserService.CurrentUser;
         if (string.IsNullOrWhiteSpace(currentUser.TokenId) || currentUser.ExpiredTime <= 0)
-            return BadRequest("目前 Token 無法執行登出。");
+            return BadRequest("Token 資訊不完整，無法登出。");
 
         await _loginService.LogoutAsync(currentUser.TokenId, currentUser.ExpiredTime);
         return Ok(new { Message = "登出成功。" });
+    }
+
+    /// <summary>
+    /// 將登入或刷新失敗結果轉成一致的 HTTP 回應。
+    /// </summary>
+    private IActionResult ToLoginFailure(Template.Common.Models.LoginResult result)
+    {
+        if (result.AccountDisabled)
+            return StatusCode(StatusCodes.Status403Forbidden, result.ErrorMessage);
+
+        if (result.PasswordExpired)
+            return StatusCode(StatusCodes.Status403Forbidden, result.ErrorMessage);
+
+        return Unauthorized(result.ErrorMessage);
     }
 }

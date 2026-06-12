@@ -13,12 +13,80 @@ public partial class ProjectDbContext : DbContext
     {
     }
 
+    public virtual DbSet<Sso_Client> Sso_Clients { get; set; }
+
+    public virtual DbSet<Sys_BackgroundJob> Sys_BackgroundJobs { get; set; }
+
     public virtual DbSet<Sys_BasicSetting> Sys_BasicSettings { get; set; }
+
+    public virtual DbSet<Sys_Department> Sys_Departments { get; set; }
+
+    public virtual DbSet<Sys_FunctionPermission> Sys_FunctionPermissions { get; set; }
+
+    public virtual DbSet<Sys_MenuTree> Sys_MenuTrees { get; set; }
+
+    public virtual DbSet<Sys_RoleGroup> Sys_RoleGroups { get; set; }
+
+    public virtual DbSet<Sys_RoleGroupFunctionPermission> Sys_RoleGroupFunctionPermissions { get; set; }
 
     public virtual DbSet<Sys_UserInfo> Sys_UserInfos { get; set; }
 
+    public virtual DbSet<Sys_UserPasswordHistory> Sys_UserPasswordHistories { get; set; }
+
+    public virtual DbSet<Sys_UserRoleGroup> Sys_UserRoleGroups { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<Sso_Client>(entity =>
+        {
+            entity.Property(e => e.CreatedTime).HasDefaultValueSql("(sysutcdatetime())", "DF_Sso_Client_CreatedTime");
+            entity.Property(e => e.IsEnable).HasDefaultValue(true, "DF_Sso_Client_IsEnable");
+            entity.Property(e => e.UpdatedTime).HasDefaultValueSql("(sysutcdatetime())", "DF_Sso_Client_UpdatedTime");
+        });
+
+        modelBuilder.Entity<Sys_BackgroundJob>(entity =>
+        {
+            entity.ToTable("Sys_BackgroundJob", tb => tb.HasComment("背景工作資料庫佇列表"));
+
+            entity.Property(e => e.Id).HasComment("工作流水號");
+            entity.Property(e => e.CompletedTime).HasComment("完成時間");
+            entity.Property(e => e.CreatedId).HasComment("建立人員");
+            entity.Property(e => e.CreatedTime)
+                .HasComment("建立時間")
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_Sys_BackgroundJob_CreatedTime");
+            entity.Property(e => e.LastError)
+                .HasComment("最後一次錯誤訊息")
+                .HasDefaultValue("", "DF_Sys_BackgroundJob_LastError");
+            entity.Property(e => e.LockedBy)
+                .HasComment("處理此工作的 worker 識別")
+                .HasDefaultValue("", "DF_Sys_BackgroundJob_LockedBy");
+            entity.Property(e => e.LockedUntil).HasComment("工作鎖定到期時間");
+            entity.Property(e => e.MaxRetryCount)
+                .HasComment("最大重試次數")
+                .HasDefaultValue(3, "DF_Sys_BackgroundJob_MaxRetryCount");
+            entity.Property(e => e.PayloadJson)
+                .HasComment("工作參數 JSON")
+                .HasDefaultValue("", "DF_Sys_BackgroundJob_PayloadJson");
+            entity.Property(e => e.Priority).HasComment("優先順序，數字越小越早處理");
+            entity.Property(e => e.RetryCount).HasComment("已重試次數");
+            entity.Property(e => e.ScheduledTime)
+                .HasComment("預計執行時間")
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_Sys_BackgroundJob_ScheduledTime");
+            entity.Property(e => e.StartedTime).HasComment("開始處理時間");
+            entity.Property(e => e.Status).HasComment("工作狀態：0 Pending、1 Processing、2 Succeeded、3 Failed、4 Canceled");
+            entity.Property(e => e.UpdatedId).HasComment("更新人員");
+            entity.Property(e => e.UpdatedTime)
+                .HasComment("更新時間")
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_Sys_BackgroundJob_UpdatedTime");
+            entity.Property(e => e.Version)
+                .HasComment("併發控制版本")
+                .HasDefaultValueSql("(newid())", "DF_Sys_BackgroundJob_Version");
+            entity.Property(e => e.WorkKey)
+                .HasComment("工作識別鍵，可用來查詢同一批工作")
+                .HasDefaultValue("", "DF_Sys_BackgroundJob_WorkKey");
+            entity.Property(e => e.WorkType).HasComment("工作類型 enum 值：1 AttachmentUpload、2 Report、3 M3u8Refresh");
+        });
+
         modelBuilder.Entity<Sys_BasicSetting>(entity =>
         {
             entity.HasKey(e => new { e.Type, e.Key }).HasName("PK_SYS_SysSettings");
@@ -33,6 +101,125 @@ public partial class ProjectDbContext : DbContext
                 .HasComment("建立時間");
             entity.Property(e => e.Label).HasComment("設定說明標籤");
             entity.Property(e => e.Value).HasComment("設定值");
+        });
+
+        modelBuilder.Entity<Sys_Department>(entity =>
+        {
+            entity.Property(e => e.CreatedTime).HasDefaultValueSql("(sysutcdatetime())", "DF_Sys_Department_CreatedTime");
+            entity.Property(e => e.IsEnable).HasDefaultValue(true, "DF_Sys_Department_IsEnable");
+            entity.Property(e => e.UpdatedTime).HasDefaultValueSql("(sysutcdatetime())", "DF_Sys_Department_UpdatedTime");
+
+            entity.HasOne(d => d.ParentDept)
+                .WithMany(p => p.InverseParentDept)
+                .HasForeignKey(d => d.ParentDeptId)
+                .HasConstraintName("FK_Sys_Department_ParentDeptId");
+        });
+
+        modelBuilder.Entity<Sys_FunctionPermission>(entity =>
+        {
+            entity.ToTable("Sys_FunctionPermission", tb => tb.HasComment("系統功能操作權限資料表"));
+
+            entity.Property(e => e.FunctionPermissionId).HasComment("功能操作權限 ID");
+            entity.Property(e => e.CreatedId).HasComment("建立人員");
+            entity.Property(e => e.CreatedTime)
+                .HasComment("建立時間")
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_Sys_FunctionPermission_CreatedTime");
+            entity.Property(e => e.FunctionCode).HasComment("功能代碼");
+            entity.Property(e => e.FunctionName).HasComment("功能名稱");
+            entity.Property(e => e.IsEnable)
+                .HasComment("啟用狀態")
+                .HasDefaultValue(true, "DF_Sys_FunctionPermission_IsEnable");
+            entity.Property(e => e.OperationCode).HasComment("操作代碼：C 新增、R 讀取、U 更新、D 刪除、A 審核、F 檔案上傳/下載；NULL 代表功能節點");
+            entity.Property(e => e.OperationName)
+                .HasComment("操作名稱")
+                .HasDefaultValue("", "DF_Sys_FunctionPermission_OperationName");
+            entity.Property(e => e.ParentFunctionPermissionId).HasComment("上層功能操作權限 ID，NULL 代表根節點");
+            entity.Property(e => e.PermissionKey).HasComment("權限鍵值，功能節點使用 FunctionCode，操作節點使用 FunctionCode:OperationCode");
+            entity.Property(e => e.SortOrder).HasComment("排序值");
+            entity.Property(e => e.UpdatedId).HasComment("更新人員");
+            entity.Property(e => e.UpdatedTime)
+                .HasComment("更新時間")
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_Sys_FunctionPermission_UpdatedTime");
+
+            entity.HasOne(d => d.ParentFunctionPermission)
+                .WithMany(p => p.InverseParentFunctionPermission)
+                .HasForeignKey(d => d.ParentFunctionPermissionId)
+                .HasConstraintName("FK_Sys_FunctionPermission_Parent");
+        });
+
+        modelBuilder.Entity<Sys_MenuTree>(entity =>
+        {
+            entity.ToTable("Sys_MenuTree", tb => tb.HasComment("系統選單樹資料表"));
+
+            entity.Property(e => e.Id).HasComment("主鍵");
+            entity.Property(e => e.CreatedId).HasComment("建立人員");
+            entity.Property(e => e.CreatedTime)
+                .HasComment("建立時間")
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_Sys_MenuTree_CreatedTime");
+            entity.Property(e => e.Icon)
+                .HasComment("圖示名稱")
+                .HasDefaultValue("", "DF_Sys_MenuTree_Icon");
+            entity.Property(e => e.IsEnable)
+                .HasComment("啟用狀態")
+                .HasDefaultValue(true, "DF_Sys_MenuTree_IsEnable");
+            entity.Property(e => e.MenuCode).HasComment("唯一選單代碼，供前端或權限邏輯識別選單");
+            entity.Property(e => e.MenuName).HasComment("顯示選單名稱");
+            entity.Property(e => e.ParentId).HasComment("父層選單 ID，NULL 表示根選單");
+            entity.Property(e => e.SortOrder).HasComment("同層排序");
+            entity.Property(e => e.UpdatedId).HasComment("更新人員");
+            entity.Property(e => e.UpdatedTime)
+                .HasComment("更新時間")
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_Sys_MenuTree_UpdatedTime");
+
+            entity.HasOne(d => d.Parent)
+                .WithMany(p => p.InverseParent)
+                .HasForeignKey(d => d.ParentId)
+                .HasConstraintName("FK_Sys_MenuTree_Parent");
+        });
+
+        modelBuilder.Entity<Sys_RoleGroup>(entity =>
+        {
+            entity.ToTable("Sys_RoleGroup", tb => tb.HasComment("系統角色群組資料表"));
+
+            entity.Property(e => e.RoleGroupId).HasComment("角色群組 ID");
+            entity.Property(e => e.CreatedId).HasComment("建立人員");
+            entity.Property(e => e.CreatedTime)
+                .HasComment("建立時間")
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_Sys_RoleGroup_CreatedTime");
+            entity.Property(e => e.Description)
+                .HasComment("角色群組描述")
+                .HasDefaultValue("", "DF_Sys_RoleGroup_Description");
+            entity.Property(e => e.IsEnable)
+                .HasComment("啟用狀態")
+                .HasDefaultValue(true, "DF_Sys_RoleGroup_IsEnable");
+            entity.Property(e => e.ParentRoleGroupId).HasComment("上層角色群組 ID，NULL 代表根節點");
+            entity.Property(e => e.RoleGroupName).HasComment("角色群組名稱");
+            entity.Property(e => e.SortOrder).HasComment("排序值");
+            entity.Property(e => e.UpdatedId).HasComment("更新人員");
+            entity.Property(e => e.UpdatedTime)
+                .HasComment("更新時間")
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_Sys_RoleGroup_UpdatedTime");
+
+            entity.HasOne(d => d.ParentRoleGroup)
+                .WithMany(p => p.InverseParentRoleGroup)
+                .HasForeignKey(d => d.ParentRoleGroupId)
+                .HasConstraintName("FK_Sys_RoleGroup_Parent");
+        });
+
+        modelBuilder.Entity<Sys_RoleGroupFunctionPermission>(entity =>
+        {
+            entity.ToTable("Sys_RoleGroupFunctionPermission", tb => tb.HasComment("角色群組功能操作權限對應表"));
+
+            entity.Property(e => e.RoleGroupId).HasComment("角色群組 ID");
+            entity.Property(e => e.FunctionPermissionId).HasComment("功能操作權限 ID");
+            entity.Property(e => e.CreatedId).HasComment("建立人員");
+            entity.Property(e => e.CreatedTime)
+                .HasComment("建立時間")
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_Sys_RoleGroupFunctionPermission_CreatedTime");
+
+            entity.HasOne(d => d.FunctionPermission).WithMany(p => p.Sys_RoleGroupFunctionPermissions).HasConstraintName("FK_Sys_RoleGroupFunctionPermission_FunctionPermission");
+
+            entity.HasOne(d => d.RoleGroup).WithMany(p => p.Sys_RoleGroupFunctionPermissions).HasConstraintName("FK_Sys_RoleGroupFunctionPermission_RoleGroup");
         });
 
         modelBuilder.Entity<Sys_UserInfo>(entity =>
@@ -55,6 +242,39 @@ public partial class ProjectDbContext : DbContext
             entity.Property(e => e.UpdatedId).HasComment("更新者ID");
             entity.Property(e => e.UpdatedTime).HasComment("更新時間");
             entity.Property(e => e.UserId).HasComment("使用者帳號");
+        });
+
+        modelBuilder.Entity<Sys_UserPasswordHistory>(entity =>
+        {
+            entity.ToTable("Sys_UserPasswordHistory", tb => tb.HasComment("使用者密碼歷程表"));
+
+            entity.Property(e => e.Id).HasComment("密碼歷程流水號");
+            entity.Property(e => e.UserId).HasComment("使用者帳號");
+            entity.Property(e => e.PasswordHash).HasComment("當次密碼雜湊值");
+            entity.Property(e => e.ChangeType).HasComment("密碼異動類型：1 建立、2 重設、3 變更");
+            entity.Property(e => e.ChangedTime)
+                .HasComment("密碼異動時間")
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_Sys_UserPasswordHistory_ChangedTime");
+            entity.Property(e => e.ChangedId).HasComment("密碼異動人員");
+        });
+
+        modelBuilder.Entity<Sys_UserRoleGroup>(entity =>
+        {
+            entity.ToTable("Sys_UserRoleGroup", tb => tb.HasComment("使用者角色群組對應表"));
+
+            entity.Property(e => e.UserId).HasComment("使用者帳號");
+            entity.Property(e => e.RoleGroupId).HasComment("角色群組 ID");
+            entity.Property(e => e.CreatedId).HasComment("建立人員");
+            entity.Property(e => e.CreatedTime)
+                .HasComment("建立時間")
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_Sys_UserRoleGroup_CreatedTime");
+
+            entity.HasOne(d => d.RoleGroup).WithMany(p => p.Sys_UserRoleGroups).HasConstraintName("FK_Sys_UserRoleGroup_RoleGroup");
+
+            entity.HasOne(d => d.User).WithMany(p => p.Sys_UserRoleGroups)
+                .HasPrincipalKey(p => p.UserId)
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("FK_Sys_UserRoleGroup_User");
         });
 
         OnModelCreatingPartial(modelBuilder);

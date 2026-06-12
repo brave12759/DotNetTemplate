@@ -1,5 +1,11 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Template.BusinessRule.Extensions;
+using Template.BusinessRule.LogService.Models;
+using Template.BusinessRule.LogService.Services;
+using Template.Common.Enums;
 using Template.BusinessRule.MenuTreeService.Models;
+using Template.Common.Models;
 using Template.DataAccess.ProjectDbContext;
 
 namespace Template.BusinessRule.MenuTreeService.Services;
@@ -9,9 +15,19 @@ namespace Template.BusinessRule.MenuTreeService.Services;
 /// </summary>
 public class MenuTreeService(IServiceProvider serviceProvider) : BaseService(serviceProvider), IMenuTreeService
 {
+    private readonly Lazy<ILogService?> _logService = new(() => serviceProvider.GetService<ILogService>());
+
     /// <inheritdoc />
-    public async Task<IReadOnlyList<MenuTreeDto>> GetListAsync(string? keyword, bool? isEnable)
+    public async Task<PageListOutput<MenuTreeDto>> GetListAsync(
+        string? keyword,
+        bool? isEnable,
+        bool enablePaging = false,
+        int page = 1,
+        int pageSize = 50)
     {
+        if (enablePaging)
+            PageListQueryableExtensions.ValidatePaging(page, pageSize);
+
         var query = Db.Sys_MenuTrees.AsNoTracking().AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(keyword))
@@ -30,14 +46,31 @@ public class MenuTreeService(IServiceProvider serviceProvider) : BaseService(ser
             .ThenBy(m => m.SortOrder)
             .ThenBy(m => m.Id)
             .Select(ToDtoExpression())
-            .ToListAsync();
+            .ToPageListOutputAsync(page, pageSize, enablePaging);
     }
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<MenuTreeDto>> GetTreeAsync(bool? isEnable)
     {
-        var menus = await GetListAsync(null, isEnable);
-        return BuildTree(menus);
+        var query = Db.Sys_MenuTrees.AsNoTracking().AsQueryable();
+
+        if (isEnable.HasValue)
+            query = query.Where(m => m.IsEnable == isEnable.Value);
+
+        var menus = await query
+            .OrderBy(m => m.ParentId)
+            .ThenBy(m => m.SortOrder)
+            .ThenBy(m => m.Id)
+            .Select(ToDtoExpression())
+            .ToListAsync();
+
+        return TreeBuilder.BuildTree(
+            menus,
+            m => m.Id,
+            m => m.ParentId,
+            CloneWithoutChildren,
+            m => m.Children,
+            CompareMenus);
     }
 
     /// <inheritdoc />
@@ -58,6 +91,7 @@ public class MenuTreeService(IServiceProvider serviceProvider) : BaseService(ser
     {
         ArgumentNullException.ThrowIfNull(request);
         ValidateRequest(request.MenuCode, request.MenuName);
+
         var menuCode = request.MenuCode.Trim();
         var exists = await Db.Sys_MenuTrees.AnyAsync(m => m.MenuCode == menuCode);
         if (exists)
@@ -83,6 +117,12 @@ public class MenuTreeService(IServiceProvider serviceProvider) : BaseService(ser
         Db.Sys_MenuTrees.Add(entity);
         await Db.SaveChangesAsync();
 
+        await WriteMenuTreeLogAsync(
+            AuditActionEnum.Create,
+            entity.Id,
+            "建立選單。",
+            newValue: MapToDto(entity));
+
         return MapToDto(entity);
     }
 
@@ -103,6 +143,8 @@ public class MenuTreeService(IServiceProvider serviceProvider) : BaseService(ser
         if (entity is null)
             return false;
 
+        var oldValue = MapToDto(entity);
+
         var menuCode = request.MenuCode.Trim();
         var codeExists = await Db.Sys_MenuTrees.AnyAsync(m => m.Id != request.Id && m.MenuCode == menuCode);
         if (codeExists)
@@ -121,6 +163,14 @@ public class MenuTreeService(IServiceProvider serviceProvider) : BaseService(ser
         entity.UpdatedId = CurrentUser.UserId;
 
         await Db.SaveChangesAsync();
+
+        await WriteMenuTreeLogAsync(
+            AuditActionEnum.Update,
+            entity.Id,
+            "更新選單。",
+            oldValue,
+            MapToDto(entity));
+
         return true;
     }
 
@@ -134,15 +184,27 @@ public class MenuTreeService(IServiceProvider serviceProvider) : BaseService(ser
         if (entity is null)
             return false;
 
+        var oldValue = MapToDto(entity);
+
         var hasChildren = await Db.Sys_MenuTrees.AnyAsync(m => m.ParentId == id);
         if (hasChildren)
             throw new InvalidOperationException("選單仍有子選單，無法刪除。");
 
         Db.Sys_MenuTrees.Remove(entity);
         await Db.SaveChangesAsync();
+
+        await WriteMenuTreeLogAsync(
+            AuditActionEnum.Delete,
+            id,
+            "刪除選單。",
+            oldValue: oldValue);
+
         return true;
     }
 
+    /// <summary>
+    /// 檢查上層選單是否為有效既有選單；空值代表根選單。
+    /// </summary>
     private async Task EnsureParentExistsAsync(int? parentId)
     {
         if (!parentId.HasValue)
@@ -156,6 +218,9 @@ public class MenuTreeService(IServiceProvider serviceProvider) : BaseService(ser
             throw new ArgumentException("父層選單不存在。", nameof(parentId));
     }
 
+    /// <summary>
+    /// 檢查更新上層選單時不會把選單移到自己的後代底下，避免樹狀循環。
+    /// </summary>
     private async Task EnsureParentIsNotDescendantAsync(int id, int? parentId)
     {
         if (!parentId.HasValue)
@@ -180,46 +245,49 @@ public class MenuTreeService(IServiceProvider serviceProvider) : BaseService(ser
         }
     }
 
-    private static void ValidateRequest(
-        string menuCode,
-        string menuName)
+    /// <summary>
+    /// 驗證選單代碼與名稱。
+    /// </summary>
+    private static void ValidateRequest(string menuCode, string menuName)
     {
         if (string.IsNullOrWhiteSpace(menuCode))
-            throw new ArgumentException("MenuCode 為必填。", nameof(menuCode));
+            throw new ArgumentException("MenuCode 不可為空。", nameof(menuCode));
 
         if (string.IsNullOrWhiteSpace(menuName))
-            throw new ArgumentException("MenuName 為必填。", nameof(menuName));
+            throw new ArgumentException("MenuName 不可為空。", nameof(menuName));
     }
 
-    private static List<MenuTreeDto> BuildTree(IReadOnlyList<MenuTreeDto> menus)
+    private Task WriteMenuTreeLogAsync(
+        AuditActionEnum action,
+        int targetId,
+        string message,
+        object? oldValue = null,
+        object? newValue = null,
+        object? metadata = null)
     {
-        var lookup = menus.ToDictionary(m => m.Id, CloneWithoutChildren);
-        var roots = new List<MenuTreeDto>();
-
-        foreach (var menu in lookup.Values.OrderBy(m => m.ParentId).ThenBy(m => m.SortOrder).ThenBy(m => m.Id))
+        return _logService.Value?.WriteUserOperationAsync(new UserOperationLogCreateRequest
         {
-            if (menu.ParentId.HasValue && lookup.TryGetValue(menu.ParentId.Value, out var parent))
-                parent.Children.Add(menu);
-            else
-                roots.Add(menu);
-        }
-
-        SortChildren(roots);    
-        return roots;
+            Module = "MenuTree",
+            Action = action,
+            Result = AuditResultEnum.Success,
+            TargetType = nameof(Sys_MenuTree),
+            TargetId = targetId.ToString(),
+            Message = message,
+            OldValue = oldValue,
+            NewValue = newValue,
+            Metadata = metadata
+        }) ?? Task.CompletedTask;
     }
 
-    private static void SortChildren(List<MenuTreeDto> menus)
+    private static int CompareMenus(MenuTreeDto left, MenuTreeDto right)
     {
-        menus.Sort((left, right) =>
-        {
-            var sortOrder = left.SortOrder.CompareTo(right.SortOrder);
-            return sortOrder != 0 ? sortOrder : left.Id.CompareTo(right.Id);
-        });
-
-        foreach (var menu in menus)
-            SortChildren(menu.Children);
+        var sortOrder = left.SortOrder.CompareTo(right.SortOrder);
+        return sortOrder != 0 ? sortOrder : left.Id.CompareTo(right.Id);
     }
 
+    /// <summary>
+    /// 複製選單 DTO 並清空 Children，避免組樹時重用原集合。
+    /// </summary>
     private static MenuTreeDto CloneWithoutChildren(MenuTreeDto menu)
     {
         return new MenuTreeDto
@@ -238,6 +306,9 @@ public class MenuTreeService(IServiceProvider serviceProvider) : BaseService(ser
         };
     }
 
+    /// <summary>
+    /// 將選單資料表實體轉成輸出 DTO。
+    /// </summary>
     private static MenuTreeDto MapToDto(Sys_MenuTree menu)
     {
         return new MenuTreeDto
@@ -256,6 +327,9 @@ public class MenuTreeService(IServiceProvider serviceProvider) : BaseService(ser
         };
     }
 
+    /// <summary>
+    /// 建立 EF Core 可轉譯的選單實體到 DTO 投影運算式。
+    /// </summary>
     private static System.Linq.Expressions.Expression<Func<Sys_MenuTree, MenuTreeDto>> ToDtoExpression()
     {
         return menu => new MenuTreeDto

@@ -1,6 +1,6 @@
 # 測試策略（Core Logic First）
 
-[← 返回方案 README](../../README.md) ｜ [← 返回 Template.Test](../README.md)
+[← 返回方案 README](../../README.md) ｜ [← 返回上層 README](../README.md)
 
 ## 目標
 
@@ -50,3 +50,25 @@
 ```bash
 dotnet test Template.Test/Template.Test.csproj
 ```
+
+## Coverage
+
+CI uses coverlet to collect test coverage and outputs a Cobertura report for GitLab:
+
+```bash
+dotnet test Template.Test/Template.Test.csproj \
+  --configuration Release \
+  --results-directory Template.Test/TestResults \
+  /p:CollectCoverage=true \
+  /p:CoverletOutputFormat=cobertura \
+  /p:CoverletOutput=Template.Test/TestResults/coverage/ \
+  /p:Exclude="[Template.WebApi]*"
+```
+
+GitLab reads the explicit `TOTAL_COVERAGE=xx%` marker emitted by `.gitlab-ci.yml`. The marker is calculated from `Template.Test/TestResults/coverage/coverage.cobertura.xml`, which is also published as a `coverage_report` artifact. Coverage focuses on core logic projects; `Template.WebApi` is excluded so controllers and startup plumbing do not dominate the metric.
+
+## SignalR 測試補充
+
+SignalR 測試使用 fake `IHubContext` / `IHubClients` / `IGroupManager` 驗證 dispatch，不啟動真實 WebSocket 連線；真實連線行為屬於整合測試或 E2E 範圍。
+
+目前覆蓋 `SignalRQueueService` 寫入 `BackgroundWorkType.SignalRMessage`、`QueuedSignalRMessageHandler` 依 All / Group / User / Connection dispatch，以及 `NotificationHub` 的 group join/leave 驗證。

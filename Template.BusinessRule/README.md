@@ -1,6 +1,6 @@
 # Template.BusinessRule — 邏輯層說明
 
-[← 返回主 README](../README.md)
+[← 返回方案 README](../README.md)
 
 .NET DDD Application/Domain Layer，放置各功能模組的商業邏輯、服務介面、服務實作與該模組專用模型。本層不直接被外部呼叫，僅透過 DI 容器由 `Template.WebApi` 注入。
 
@@ -55,6 +55,20 @@ Template.BusinessRule/
 │   └── Services/
 │       ├── IMenuTreeService.cs
 │       └── MenuTreeService.cs                 # 選單樹 CRUD / 階層樹查詢
+├── RoleGroupService/
+│   ├── Doc/
+│   │   └── RoleGroupService.md
+│   ├── Models/
+│   └── Services/
+│       ├── IRoleGroupService.cs
+│       └── RoleGroupService.cs                # 角色群組 CRUD / 階層樹 / 使用者對應
+├── FunctionPermissionService/
+│   ├── Doc/
+│   │   └── FunctionPermissionService.md
+│   ├── Models/
+│   └── Services/
+│       ├── IFunctionPermissionService.cs
+│       └── FunctionPermissionService.cs       # 功能操作權限 CRUD / 階層樹 / 角色群組指派
 ├── PasswordManager/
 │   ├── Doc/
 │   │   └── PasswordManager.md
@@ -74,13 +88,15 @@ Template.BusinessRule/
 
 所有服務的基底類別，透過 `IServiceProvider` Lazy 載入常用相依性，避免建構子注入過多參數。
 
-| 屬性 | 型別 | 說明 |
-|---|---|---|
-| `Db` | `ProjectDbContext` | 主業務資料庫（延遲載入） |
-| `LogDb` | `LogDbContext` | 日誌資料庫（延遲載入） |
+
+| 屬性                 | 型別                  | 說明                       |
+| -------------------- | --------------------- | -------------------------- |
+| `Db`                 | `ProjectDbContext`    | 主業務資料庫（延遲載入）   |
+| `LogDb`              | `LogDbContext`        | 日誌資料庫（延遲載入）     |
 | `CurrentUserService` | `ICurrentUserService` | 當前登入使用者（延遲載入） |
 
 **用法**：
+
 ```csharp
 public class MyService(IServiceProvider sp) : BaseService(sp), IMyService
 {
@@ -96,16 +112,19 @@ public class MyService(IServiceProvider sp) : BaseService(sp), IMyService
 
 ## 服務一覽
 
-| 服務 | 介面 | 實作 | 文件 |
-|---|---|---|---|
-| 登入 / 登出 | `ILoginService` | `LoginService` | [LoginService.md](LoginService/Doc/LoginService.md) |
-| 使用者管理 | `IUserService` | `UserService` | [UserService.md](UserService/Doc/UserService.md) |
-| 選單樹 | `IMenuTreeService` | `MenuTreeService` | [MenuTreeService.md](MenuTreeService/Doc/MenuTreeService.md) |
-| 背景資料庫佇列 | `IBackgroundTaskQueue` | `DbBackgroundTaskQueue` | [BackgroundQueue.md](../Template.Common/BackgroundQueue/Doc/BackgroundQueue.md) |
-| 背景佇列查詢 | `IBackgroundJobMonitorService` | `BackgroundJobMonitorService` | [BackgroundQueue.md](../Template.Common/BackgroundQueue/Doc/BackgroundQueue.md) |
-| 加解密 / 雜湊 | `ICryptographyService` | `CryptographyService` | [CryptographyService.md](CryptographyService/Doc/CryptographyService.md) |
-| 密碼管理 | `IPasswordManager` | `PasswordManager` | [PasswordManager.md](PasswordManager/Doc/PasswordManager.md) |
-| Token 撤銷 | `ITokenRevocationService` | `EfCoreTokenRevocationService` / `InMemoryTokenRevocationService` | [TokenRevocationService.md](TokenRevocationService/Doc/TokenRevocationService.md) |
+
+| 服務           | 介面                           | 實作                                                              | 文件                                                                              |
+| -------------- | ------------------------------ | ----------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| 登入 / 登出    | `ILoginService`                | `LoginService`                                                    | [LoginService.md](LoginService/Doc/LoginService.md)                               |
+| 使用者管理     | `IUserService`                 | `UserService`                                                     | [UserService.md](UserService/Doc/UserService.md)                                  |
+| 選單樹         | `IMenuTreeService`             | `MenuTreeService`                                                 | [MenuTreeService.md](MenuTreeService/Doc/MenuTreeService.md)                      |
+| 角色群組       | `IRoleGroupService`            | `RoleGroupService`                                                | [RoleGroupService.md](RoleGroupService/Doc/RoleGroupService.md)                   |
+| 功能操作權限   | `IFunctionPermissionService`   | `FunctionPermissionService`                                      | [FunctionPermissionService.md](FunctionPermissionService/Doc/FunctionPermissionService.md) |
+| 背景資料庫佇列 | `IBackgroundTaskQueue`         | `DbBackgroundTaskQueue`                                           | [BackgroundQueue.md](../Template.Common/BackgroundQueue/Doc/BackgroundQueue.md)   |
+| 背景佇列查詢   | `IBackgroundJobMonitorService` | `BackgroundJobMonitorService`                                     | [BackgroundQueue.md](../Template.Common/BackgroundQueue/Doc/BackgroundQueue.md)   |
+| 加解密 / 雜湊  | `ICryptographyService`         | `CryptographyService`                                             | [CryptographyService.md](CryptographyService/Doc/CryptographyService.md)          |
+| 密碼管理       | `IPasswordManager`             | `PasswordManager`                                                 | [PasswordManager.md](PasswordManager/Doc/PasswordManager.md)                      |
+| Token 撤銷     | `ITokenRevocationService`      | `EfCoreTokenRevocationService` / `InMemoryTokenRevocationService` | [TokenRevocationService.md](TokenRevocationService/Doc/TokenRevocationService.md) |
 
 ---
 
@@ -137,3 +156,26 @@ builder.Services.AddBusinessRuleServices(databaseSettings, backgroundQueueSettin
 `IJwtService`、`ICurrentUserService` 屬於 WebApi 宿主層服務，仍由 `Program.cs` 註冊。
 
 > `EfCoreTokenRevocationService` 依賴 `LogDbContext`（Scoped），因此本身也必須以 `Scoped` 註冊。`InMemoryTokenRevocationService` 無外部相依，可用 `Singleton`。
+
+## SignalR Queue 補充
+
+`Template.BusinessRule` 預設註冊 `ISignalRQueueService` / `SignalRQueueService`。此服務依賴既有 `IBackgroundTaskQueue`，會將 SignalR 推播訊息寫入 `BackgroundWorkType.SignalRMessage`，再由 WebApi 端的 `QueuedSignalRMessageHandler` 推送到 Hub。
+
+完整說明請參考 [SignalR.md](../Template.Common/SignalR/Doc/SignalR.md)。
+
+## 查詢設計慣例
+
+- `GetListAsync`：可回傳 `PageListOutput<T>`，用於平面清單與分頁查詢。
+- `GetTreeAsync`：固定回傳 `IReadOnlyList<T>` 樹狀資料，不應暴露或依賴分頁參數。
+- `GetTreeAsync` 的資料查詢需走獨立非分頁路徑，避免額外 `Count` 查詢與分頁語意耦合。
+
+## 核心稽核與日誌基準
+
+以下屬於產品級最小基準，核心流程必須有對應日誌：
+
+- 登入流程（`LoginService`）：登入、RefreshToken、Logout 成功與失敗都要寫 `UserOperationLog`。
+- 功能維護（`UserService`、`DepartmentService`、`MenuTreeService`、`RoleGroupService`、`FunctionPermissionService`）：Create/Update/Delete 必須寫 `UserOperationLog`。
+- SSO（`SsoService`）：Client CRUD 寫 `UserOperationLog`，Token Login/Validate 寫 `SsoLog`。
+- 佇列（`DbBackgroundTaskQueue`）：Enqueue/Claim/Complete/Fail 必須寫 `QueueLog`。
+
+分頁參數驗證統一使用 `PageListQueryableExtensions.ValidatePaging`，避免各服務維護重複規則。

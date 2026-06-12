@@ -147,6 +147,9 @@ public sealed class QueuedBackgroundService(
         }
     }
 
+    /// <summary>
+    /// 依工作類型取得背景工作執行設定，沒有專屬設定時使用預設值。
+    /// </summary>
     private BackgroundQueueWorkerSettings GetWorkerSettings(BackgroundWorkType workType)
     {
         var configured = settings.Workers.FirstOrDefault(w =>

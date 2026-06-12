@@ -1,137 +1,83 @@
-# JWT 驗證說明文件
+# JwtService
 
-[← 返回 README](../../../README.md) ｜ [← 返回 Template.WebApi](../../README.md)
+[根目錄 README](../../../README.md) / [WebApi README](../../README.md)
 
-## 概述
+`JwtService` 是 WebApi 層的 `IJwtService` 實作，負責產生個人登入 Token、SSO Server Token、驗證 Bearer Token、檢查 Token 撤銷狀態，以及提供系統管理員維護 JWT 設定。
 
-JWT（JSON Web Token）是本專案唯一的身份驗證機制，所有受保護 API 均需於 HTTP Header 提供有效 Bearer Token。
+## 設定來源
 
----
+JWT 設定改由資料庫 `Sys_BasicSettings` 管理，`Type = JwtSetting`。
 
-## 架構位置
+| Key | 說明 | 單位 |
+|---|---|---|
+| `SecretKey` | HMAC-SHA256 簽章金鑰，至少 32 bytes | 文字 |
+| `Issuer` | Token 發行者 | 文字 |
+| `Audience` | Token 接收對象 | 文字 |
+| `PersonalTokenExpire` | 個人登入 Token 有效時間 | 分鐘 |
+| `ServerTokenExpire` | SSO Server Token 有效時間 | 秒 |
 
-```
-Template.Common/
-├── Models/
-│   └── CurrentUser.cs                 # 解析後的使用者資訊
-├── Services/
-│   ├── IJwtService.cs                 # Token 產生介面
-│   ├── ICurrentUserService.cs         # 當前使用者介面
-│   └── ITokenRevocationService.cs     # Token 撤銷介面
-└── Settings/
-    └── JwtSettings.cs                 # JWT 設定模型
+初始資料可執行 `Template.DataAccess/Scripts/SeedJwtSettings.sql`。部署後可透過 `JwtSettingController` 查詢或更新設定。
 
-Template.WebApi/
-└── Services/
-    ├── JwtService.cs                  # Token 產生實作
-    ├── CurrentUserService.cs          # 從 HTTP Claims 解析使用者
-    ├── InMemoryTokenRevocationService.cs  # 記憶體撤銷（開發/單機）
-    └── SqlServerTokenRevocationService.cs # SQL Server 撤銷（多節點）
-```
+`GET /JwtSetting/Get` 只會回傳遮罩後的簽章金鑰；完整 `SecretKey` 只允許透過 `PUT /JwtSetting/Update` 寫入，不會完整回傳給 API 呼叫端。
 
----
+JWT 設定不再放在 `appsettings.json` 或 `.env`。
 
-## 設定說明（appsettings.json）
+`JwtSettingController` 需要 `System.JwtSetting:Manage` 功能權限。權限建立 SQL 已整理在 [SsoService.md](../../../Template.BusinessRule/SsoService/Doc/SsoService.md) 的「既有資料庫啟用 SSO」章節，建立後請指派給正式環境的系統管理員角色群組。
 
-```json
-"JwtSettings": {
-  "SecretKey": "",          // HMAC-SHA256 簽章金鑰（至少 32 字元，生產環境由環境變數注入）
-  "Issuer": "Template",     // 核發者
-  "Audience": "Template",   // 受眾
-  "ExpiresMinutes": 60      // Token 有效分鐘數
-}
-```
+## Token 類型
 
-> 安全提醒：SecretKey 請勿寫入版本控制，應透過環境變數或 Secrets Manager 注入。
-
----
-
-## Token Claims 對照表
-
-| Claim 類型 | Claim 名稱 | CurrentUser 欄位 | 說明 |
+| 類型 | Claim | 產生方法 | 用途 |
 |---|---|---|---|
-| ClaimTypes.Name | http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name | UserId | 使用者帳號 |
-| ClaimTypes.Email | http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress | Email | 電子郵件 |
-| ClaimTypes.MobilePhone | http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobilephone | MobilePhone | 聯絡電話 |
-| dept_id | dept_id | DeptId | 部門 ID |
-| ip | ip | Ip | 登入來源 IP |
-| jti | jti | TokenId | Token 唯一識別碼（用於登出撤銷） |
-| iat | iat | IssuedTime | 簽發時間（Unix Timestamp） |
-| exp | exp | ExpiredTime | 到期時間（Unix Timestamp） |
+| 個人 Token | `token_type = personal` | `GeneratePersonalTokenAsync` | 一般使用者登入與呼叫 WebApi |
+| Server Token | `token_type = server` | `GenerateServerTokenAsync` | SSO client 登入與系統間 Token 驗證 |
 
----
+## 個人 Token Claims
 
-## Token 產生流程
-
-```
-POST /Auth/Login
-  → LoginService.LoginAsync
-    → 驗帳號密碼
-    → JwtService.GenerateToken(userId, email, mobilePhone, deptId, ip)
-      → 組建 Claims 陣列
-      → 建立 JwtSecurityToken（HMAC-SHA256）
-      → 回傳 Base64url 字串 Token
-  → 回應 { Token }
-```
-
----
-
-## Token 驗證流程（每次 API 請求）
-
-```
-HTTP Header: Authorization: Bearer <token>
-  → UseAuthentication
-    → JwtBearerHandler 驗證
-      → 簽章 / Issuer / Audience / Lifetime 驗證
-      → OnTokenValidated 事件
-        → ITokenRevocationService.IsRevoked(jti)   ← 撤銷檢查
-        → 若已撤銷 → context.Fail → 401
-      → 驗證通過 → 設定 HttpContext.User
-  → CurrentUserService.CurrentUser （Lazy 解析 Claims → CurrentUser）
-```
-
----
-
-## Token 登出撤銷
-
-```
-POST /Auth/Logout
-  → 取出 CurrentUser.TokenId（jti）與 ExpiredTime（exp）
-  → LoginService.LogoutAsync(tokenId, expiredUnixTimeSeconds)
-    → ITokenRevocationService.Revoke(jti, exp)
-      → 寫入撤銷清單（直到 exp 為止）
-  → 後續相同 jti 的請求 → OnTokenValidated 拒絕 → 401
-```
-
-### 撤銷儲存策略
-
-| 實作 | 適用情境 |
+| Claim | 來源 |
 |---|---|
-| InMemoryTokenRevocationService | 開發環境 / 單機 / 無 LogConnectionString |
-| SqlServerTokenRevocationService | 正式環境 / 多節點部署（共用 Log DB） |
+| `ClaimTypes.Name` | 使用者帳號 |
+| `ClaimTypes.Email` | 使用者 Email |
+| `ClaimTypes.MobilePhone` | 使用者手機 |
+| `dept_id` | 使用者部門 ID |
+| `ip` | 登入 IP |
+| `jti` | Token ID |
+| `iat` | 發行時間 Unix timestamp |
+| `exp` | 到期時間 Unix timestamp |
+| `role_groups` | 選擇性角色群組 JSON |
+| `function_permissions` | 選擇性功能權限樹 JSON |
 
-Program.cs 自動選擇：`LogConnectionString` 有值則使用 SQL Server，否則使用記憶體。
+## 驗證流程
 
----
-
-## 於 Controller 取得當前使用者
-
-在任何繼承 `AuthenticationController`（或自行注入 `ICurrentUserService`）的 Controller 中：
-
-```csharp
-var user = _currentUserService.CurrentUser;
-// user.UserId, user.Email, user.MobilePhone, user.DeptId, user.Ip, ...
+```text
+HTTP Authorization: Bearer <token>
+  -> JwtBearer middleware 先解析 Token
+  -> OnTokenValidated 呼叫 IJwtService.ValidateTokenAsync
+  -> JwtService 重新讀取資料庫 JWT 設定
+  -> 驗證簽章、Issuer、Audience、有效期限
+  -> 依 jti 檢查 Token 是否已撤銷
+  -> 將驗證後的 Principal 設回 HttpContext.User
 ```
 
-亦可透過 `BaseService.CurrentUserService`（BusinessRule 層）直接取用。
+## SSO 流程
 
----
+```text
+POST /Sso/Login
+  -> SsoService 驗證 Sso_Client 中的 ClientId 與 ClientSecret
+  -> JwtService.GenerateServerTokenAsync 發出短效 Server Token
 
-## DI 註冊（Program.cs）
+POST /Sso/ValidateToken
+  -> SsoService 透過 JwtService 驗證 Token
+  -> token_type 必須是 server
+  -> client_id 必須對應到啟用中的 SSO client
+  -> 回傳 Token 是否有效、ClientId 與 ExpiresAt
+```
+
+SSO client secret 存在 `Sso_Client`，不放在 `Sys_BasicSettings`。
+
+## DI
 
 ```csharp
 builder.Services.AddScoped<IJwtService, JwtService>();
-builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
-builder.Services.AddSingleton<ITokenRevocationService, SqlServerTokenRevocationService>();
-// 或 InMemoryTokenRevocationService（依 LogConnectionString 自動切換）
 ```
+
+`JwtService` 依賴 `ProjectDbContext` 與 `ITokenRevocationService`。

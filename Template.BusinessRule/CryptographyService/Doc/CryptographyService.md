@@ -1,6 +1,6 @@
 # CryptographyService 加解密服務說明文件
 
-[← 返回 README](../../../README.md) ｜ [← 返回 BusinessRule](../../README.md)
+[← 返回方案 README](../../../README.md) ｜ [← 返回上層 README](../../README.md)
 
 ## 概述
 

@@ -1,6 +1,6 @@
 # CurrentUser 說明文件
 
-[← 返回 README](../../../README.md) ｜ [← 返回 Template.Common](../../README.md)
+[← 返回方案 README](../../../README.md) ｜ [← 返回上層 README](../../README.md)
 
 ## 概述
 
@@ -40,8 +40,27 @@ public class CurrentUser
     public long   IssuedTime  { get; set; }  // JWT 簽發時間（Unix Timestamp）
     public long   ExpiredTime { get; set; }  // JWT 到期時間（Unix Timestamp）
     public string TokenId     { get; set; }  // JWT jti（Token 唯一識別碼）
+
+    // 選用：啟用 RoleGroupService 後，可放入使用者角色群組。
+    // public List<CurrentUserRoleGroup> RoleGroups { get; set; } = [];
+
+    // 選用：啟用 FunctionPermissionService 後，可放入使用者功能操作權限。
+    // public List<CurrentUserFunctionPermission> FunctionPermissions { get; set; } = [];
 }
 ```
+
+---
+
+## 選用角色群組與功能操作權限
+
+若專案需要在 `CurrentUser` 直接攜帶角色群組或功能操作權限，可取消註解 `CurrentUser.cs` 內預留的 List 欄位與模型：
+
+| 欄位 | 型別 | 說明 |
+|---|---|---|
+| RoleGroups | `List<CurrentUserRoleGroup>` | 使用者擁有的角色群組清單，通常由 `RoleGroupService` 取得，並以 `RoleGroupId` 作為 Key 值 |
+| FunctionPermissions | `List<CurrentUserFunctionPermission>` | 使用者經由角色群組取得的功能操作權限，通常由 `FunctionPermissionService` 取得 |
+
+功能操作權限在實務上通常會高度綁定角色群組。若要放入 `CurrentUser`，建議由登入流程或授權流程先透過 `RoleGroupId` 彙整使用者權限，再寫入 `CurrentUser`；預設程式先保留註解，避免未啟用角色群組或功能權限模組的專案被迫增加相依。
 
 ---
 
@@ -57,6 +76,8 @@ public class CurrentUser
 | IssuedTime | `JwtRegisteredClaimNames.Iat` | 簽發時間（long） |
 | ExpiredTime | `JwtRegisteredClaimNames.Exp` | 到期時間（long） |
 | TokenId | `JwtRegisteredClaimNames.Jti` | Token 唯一識別碼 |
+| RoleGroups | `"role_groups"` | 選用；使用者角色群組 JSON，預設不啟用 |
+| FunctionPermissions | `"function_permissions"` | 選用；使用者功能操作權限 JSON，預設不啟用 |
 
 ---
 

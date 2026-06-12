@@ -64,6 +64,11 @@ TestResult*.xml
 .cursor/
 .roo/
 .aider*
+.claude/
+.continue/
+.windsurf/
+.gemini/
+.avante/
 
 ## ========================
 ## ASP.NET Core
@@ -92,6 +97,17 @@ web.config
 *.log
 *.tmp
 *.temp
+*.bak
+*.orig
+*.swp
+*.swo
+
+## Local SQL scratch / temp (keep正式腳本請用明確檔名放在 Scripts)
+*.local.sql
+*.tmp.sql
+*.temp.sql
+*.scratch.sql
+*.draft.sql
 
 ## ========================
 ## OS

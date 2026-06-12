@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using Template.BusinessRule.UserService.Services;
 using Template.Common.Models.User;
-using Template.Common.Services;
 
 namespace Template.WebApi.Controllers;
 
@@ -16,11 +16,39 @@ public class UserController(
     /// <summary>
     /// 取得使用者清單。
     /// </summary>
+    /// <param name="keyword">關鍵字，會比對帳號、姓名、Email、手機、部門 ID 與部門名稱。</param>
+    /// <param name="isEnable">啟用狀態；空值代表不篩選。</param>
+    /// <param name="deptId">部門 ID；空值代表不篩選部門。</param>
+    /// <param name="includeSubDepartments">是否包含指定部門底下所有子部門。</param>
+    /// <param name="enablePaging">是否啟用分頁。</param>
+    /// <param name="page">頁碼（從 1 開始）。</param>
+    /// <param name="pageSize">每頁筆數。</param>
     [HttpGet]
-    public async Task<IActionResult> List([FromQuery] string? keyword, [FromQuery] bool? isEnable)
+    public async Task<IActionResult> List(
+        [FromQuery] string? keyword,
+        [FromQuery] bool? isEnable,
+        [FromQuery] int? deptId,
+        [FromQuery] bool includeSubDepartments = false,
+        [FromQuery] bool enablePaging = false,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50)
     {
-        var users = await _userService.GetListAsync(keyword, isEnable);
-        return Ok(users);
+        try
+        {
+            var users = await _userService.GetListAsync(
+                keyword,
+                isEnable,
+                deptId,
+                includeSubDepartments,
+                enablePaging,
+                page,
+                pageSize);
+            return Ok(users);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 
     /// <summary>

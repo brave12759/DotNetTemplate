@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Template.BusinessRule;
+using Template.BusinessRule.Extensions;
 using Template.Common.BackgroundQueue;
 
 namespace Template.BusinessRule.BackgroundQueue.Services;
@@ -68,11 +69,7 @@ public class BackgroundJobMonitorService(IServiceProvider serviceProvider)
         if (status.HasValue && !Enum.IsDefined(status.Value))
             throw new ArgumentException("Status 不是有效的背景工作狀態。", nameof(status));
 
-        if (page < 1)
-            throw new ArgumentException("Page 必須大於 0。", nameof(page));
-
-        if (pageSize is < 1 or > 200)
-            throw new ArgumentException("PageSize 必須介於 1 到 200。", nameof(pageSize));
+        PageListQueryableExtensions.ValidatePaging(page, pageSize);
 
         var query = Db.Sys_BackgroundJobs.AsNoTracking();
 
@@ -82,12 +79,9 @@ public class BackgroundJobMonitorService(IServiceProvider serviceProvider)
         if (status.HasValue)
             query = query.Where(j => j.Status == (int)status.Value);
 
-        var totalCount = await query.CountAsync(cancellationToken);
-        var rows = await query
+        var pageOutput = await query
             .OrderByDescending(j => j.CreatedTime)
             .ThenByDescending(j => j.Id)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
             .Select(j => new
             {
                 j.Id,
@@ -109,14 +103,14 @@ public class BackgroundJobMonitorService(IServiceProvider serviceProvider)
                 j.UpdatedTime,
                 j.UpdatedId
             })
-            .ToListAsync(cancellationToken);
+            .ToPageListOutputAsync(page, pageSize, enablePaging: true, cancellationToken);
 
         return new BackgroundJobQueryResult
         {
-            TotalCount = totalCount,
-            Page = page,
-            PageSize = pageSize,
-            Items = rows.Select(j => new BackgroundJobDto
+            TotalCount = pageOutput.TotalCount,
+            Page = pageOutput.Page,
+            PageSize = pageOutput.PageSize,
+            Items = pageOutput.Items.Select(j => new BackgroundJobDto
             {
                 Id = j.Id,
                 WorkType = (BackgroundWorkType)j.WorkType,

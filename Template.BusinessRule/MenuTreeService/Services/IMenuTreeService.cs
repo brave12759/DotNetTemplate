@@ -1,4 +1,5 @@
 using Template.BusinessRule.MenuTreeService.Models;
+using Template.Common.Models;
 
 namespace Template.BusinessRule.MenuTreeService.Services;
 
@@ -10,7 +11,12 @@ public interface IMenuTreeService
     /// <summary>
     /// 取得選單平面清單。
     /// </summary>
-    Task<IReadOnlyList<MenuTreeDto>> GetListAsync(string? keyword, bool? isEnable);
+    Task<PageListOutput<MenuTreeDto>> GetListAsync(
+        string? keyword,
+        bool? isEnable,
+        bool enablePaging = false,
+        int page = 1,
+        int pageSize = 50);
 
     /// <summary>
     /// 取得父子階層選單樹。

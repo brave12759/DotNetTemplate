@@ -47,6 +47,23 @@ public class ClockUtilTests
     }
 
     [TestMethod]
+    public void ParseDateTime_InvalidValue_Should_ThrowFormatException()
+    {
+        Assert.ThrowsException<FormatException>(() => ClockUtil.ParseDateTime("not-a-date"));
+    }
+
+    [TestMethod]
+    public void ToUtcDateTime_Utc_Should_ReturnSameValue()
+    {
+        var utc = new DateTime(2026, 5, 8, 5, 0, 0, DateTimeKind.Utc);
+
+        var result = utc.ToUtcDateTime(PlusEightTimeZone);
+
+        Assert.AreEqual(utc, result);
+        Assert.AreEqual(DateTimeKind.Utc, result.Kind);
+    }
+
+    [TestMethod]
     public void ToUtcDateTime_UnspecifiedWithTimeZone_Should_ConvertToUtc()
     {
         var local = new DateTime(2026, 5, 8, 13, 0, 0, DateTimeKind.Unspecified);
@@ -55,6 +72,17 @@ public class ClockUtilTests
 
         Assert.AreEqual(DateTimeKind.Utc, utc.Kind);
         Assert.AreEqual(new DateTime(2026, 5, 8, 5, 0, 0, DateTimeKind.Utc), utc);
+    }
+
+    [TestMethod]
+    public void ToUtcDateTime_LocalWithoutTimeZone_Should_ConvertUsingLocalKind()
+    {
+        var local = new DateTime(2026, 5, 8, 13, 0, 0, DateTimeKind.Local);
+
+        var utc = local.ToUtcDateTime();
+
+        Assert.AreEqual(DateTimeKind.Utc, utc.Kind);
+        Assert.AreEqual(local.ToUniversalTime(), utc);
     }
 
     [TestMethod]
@@ -80,6 +108,27 @@ public class ClockUtilTests
         Assert.AreEqual(TimeSpan.FromHours(8), offset.Offset);
         Assert.AreEqual(date, offset.ToDateOnly());
         Assert.AreEqual(time, offset.ToTimeOnly());
+    }
+
+    [TestMethod]
+    public void ToDateTimeOffset_Utc_Should_UseZeroOffset()
+    {
+        var utc = new DateTime(2026, 5, 8, 5, 0, 0, DateTimeKind.Utc);
+
+        var offset = utc.ToDateTimeOffset(PlusEightTimeZone);
+
+        Assert.AreEqual(TimeSpan.Zero, offset.Offset);
+        Assert.AreEqual(utc, offset.UtcDateTime);
+    }
+
+    [TestMethod]
+    public void DateTimeOffset_ToDateOnly_WithTimeZone_Should_UseTargetDate()
+    {
+        var utcLateNight = new DateTimeOffset(2026, 5, 8, 18, 30, 0, TimeSpan.Zero);
+
+        var date = utcLateNight.ToDateOnly(PlusEightTimeZone);
+
+        Assert.AreEqual(new DateOnly(2026, 5, 9), date);
     }
 
     [TestMethod]
@@ -120,5 +169,42 @@ public class ClockUtilTests
         var text = value.FormatUtcIso();
 
         Assert.AreEqual("2026-05-08T05:20:30.456Z", text);
+    }
+
+    [TestMethod]
+    public void NowMethods_Should_ReturnReasonableValues()
+    {
+        var utcNow = ClockUtil.UtcNow();
+        var utcOffsetNow = ClockUtil.UtcNowOffset();
+        var localNow = ClockUtil.LocalNow(PlusEightTimeZone);
+        var localToday = ClockUtil.LocalToday(PlusEightTimeZone);
+
+        Assert.AreEqual(DateTimeKind.Utc, utcNow.Kind);
+        Assert.IsTrue(utcOffsetNow.Offset == TimeSpan.Zero);
+        Assert.AreEqual(DateOnly.FromDateTime(localNow), localToday);
+    }
+
+    [TestMethod]
+    public void OffsetAndKindHelpers_Should_Work()
+    {
+        var dt = new DateTime(2026, 5, 8, 13, 20, 30, DateTimeKind.Unspecified);
+        var withKind = dt.WithKind(DateTimeKind.Local);
+        var dto = new DateTimeOffset(2026, 5, 8, 13, 20, 30, TimeSpan.FromHours(8));
+
+        Assert.AreEqual(DateTimeKind.Local, withKind.Kind);
+        Assert.AreEqual(TimeSpan.Zero, dto.ToUtcOffset().Offset);
+        Assert.AreEqual(TimeSpan.FromHours(8), dto.ToLocalOffset(PlusEightTimeZone).Offset);
+    }
+
+    [TestMethod]
+    public void DateOnlyBoundaryHelpers_Should_Work()
+    {
+        var date = new DateOnly(2026, 5, 8);
+
+        var start = date.StartOfDay(DateTimeKind.Utc);
+        var end = date.EndOfDay(DateTimeKind.Utc);
+
+        Assert.AreEqual(new DateTime(2026, 5, 8, 0, 0, 0, DateTimeKind.Utc), start);
+        Assert.AreEqual(new DateTime(2026, 5, 8, 23, 59, 59, 999, DateTimeKind.Utc).AddTicks(9999), end);
     }
 }

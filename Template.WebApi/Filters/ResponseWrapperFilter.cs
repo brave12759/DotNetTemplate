@@ -52,6 +52,9 @@ public class ResponseWrapperFilter : IResultFilter, IOrderedFilter
 
     public void OnResultExecuted(ResultExecutedContext context) { }
 
+    /// <summary>
+    /// 將 Controller 回傳值包裝成統一 API 回應格式。
+    /// </summary>
     private static object WrapValue(int statusCode, object? value)
     {
         var message = statusCode is >= 200 and < 300 ? "成功" : "錯誤";

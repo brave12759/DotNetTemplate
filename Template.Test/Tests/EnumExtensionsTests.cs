@@ -82,6 +82,24 @@ public class EnumExtensionsTests
         var result = "NoSuchValue".ToEnum<MessageEnum>();
         Assert.IsNull(result);
     }
+
+    [TestMethod]
+    public void GetValues_Should_ReturnAllEnumValues()
+    {
+        var values = EnumExtensions.GetValues<MessageEnum>();
+
+        Assert.IsTrue(values.Contains(MessageEnum.Success));
+        Assert.IsTrue(values.Contains(MessageEnum.BadRequest));
+    }
+
+    [TestMethod]
+    public void GetDescriptionMap_Should_ContainDescriptionText()
+    {
+        var map = EnumExtensions.GetDescriptionMap<MessageEnum>();
+
+        Assert.IsTrue(map.ContainsKey((int)MessageEnum.Success));
+        Assert.AreEqual("成功", map[(int)MessageEnum.Success]);
+    }
 }
 
 /// <summary>無 [Description] 標記的測試專用 Enum。</summary>

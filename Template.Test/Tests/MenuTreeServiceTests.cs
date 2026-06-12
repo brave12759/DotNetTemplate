@@ -1,8 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Template.BusinessRule.LogService.Models;
+using Template.BusinessRule.LogService.Services;
 using Template.BusinessRule.MenuTreeService.Models;
 using Template.BusinessRule.MenuTreeService.Services;
+using Template.Common.Enums;
 using Template.Common.Models;
 using Template.Common.Services;
 using Template.DataAccess.ProjectDbContext;
@@ -37,6 +40,11 @@ public class MenuTreeServiceTests
         var entity = await db.Sys_MenuTrees.FirstAsync(x => x.Id == created.Id);
         Assert.AreEqual("tester", entity.CreatedId);
         Assert.AreEqual("tester", entity.UpdatedId);
+
+        var logService = scope.ServiceProvider.GetRequiredService<RecordingLogService>();
+        Assert.AreEqual(1, logService.UserOperations.Count);
+        Assert.AreEqual("MenuTree", logService.UserOperations[0].Module);
+        Assert.AreEqual(AuditActionEnum.Create, logService.UserOperations[0].Action);
     }
 
     [TestMethod]
@@ -114,6 +122,10 @@ public class MenuTreeServiceTests
         Assert.AreEqual(30, updated.SortOrder);
         Assert.IsFalse(updated.IsEnable);
         Assert.AreEqual("tester", updated.UpdatedId);
+
+        var logService = scope.ServiceProvider.GetRequiredService<RecordingLogService>();
+        Assert.AreEqual(1, logService.UserOperations.Count);
+        Assert.AreEqual(AuditActionEnum.Update, logService.UserOperations[0].Action);
     }
 
     [TestMethod]
@@ -175,6 +187,10 @@ public class MenuTreeServiceTests
 
         Assert.IsTrue(ok);
         Assert.IsFalse(await db.Sys_MenuTrees.AnyAsync(x => x.Id == menu.Id));
+
+        var logService = scope.ServiceProvider.GetRequiredService<RecordingLogService>();
+        Assert.AreEqual(1, logService.UserOperations.Count);
+        Assert.AreEqual(AuditActionEnum.Delete, logService.UserOperations[0].Action);
     }
 
     private static IServiceScope BuildScope()
@@ -185,6 +201,8 @@ public class MenuTreeServiceTests
             options.UseInMemoryDatabase($"menu-tree-service-tests-{Guid.NewGuid()}"));
 
         services.AddScoped<ICurrentUserService, FakeCurrentUserService>();
+        services.AddSingleton<RecordingLogService>();
+        services.AddScoped<ILogService>(sp => sp.GetRequiredService<RecordingLogService>());
 
         var provider = services.BuildServiceProvider();
         return provider.CreateScope();
@@ -214,5 +232,31 @@ public class MenuTreeServiceTests
     private sealed class FakeCurrentUserService : ICurrentUserService
     {
         public CurrentUser CurrentUser { get; } = new CurrentUser { UserId = "tester", Email = "tester@localhost" };
+    }
+
+    private sealed class RecordingLogService : ILogService
+    {
+        public List<UserOperationLogCreateRequest> UserOperations { get; } = [];
+
+        public Task<long> WriteUserOperationAsync(UserOperationLogCreateRequest request, CancellationToken cancellationToken = default)
+        {
+            UserOperations.Add(request);
+            return Task.FromResult((long)UserOperations.Count);
+        }
+
+        public Task<UserOperationLogQueryResult> GetUserOperationLogsAsync(UserOperationLogQueryRequest request, CancellationToken cancellationToken = default) =>
+            throw new NotImplementedException();
+
+        public Task<long> WriteQueueAsync(QueueLogCreateRequest request, CancellationToken cancellationToken = default) =>
+            Task.FromResult(0L);
+
+        public Task<QueueLogQueryResult> GetQueueLogsAsync(QueueLogQueryRequest request, CancellationToken cancellationToken = default) =>
+            throw new NotImplementedException();
+
+        public Task<long> WriteSsoAsync(SsoLogCreateRequest request, CancellationToken cancellationToken = default) =>
+            Task.FromResult(0L);
+
+        public Task<SsoLogQueryResult> GetSsoLogsAsync(SsoLogQueryRequest request, CancellationToken cancellationToken = default) =>
+            throw new NotImplementedException();
     }
 }

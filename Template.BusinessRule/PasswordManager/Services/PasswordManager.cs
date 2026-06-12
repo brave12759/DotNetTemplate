@@ -1,10 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
-using Template.Common.Services;
+using Template.BusinessRule.CryptographyService.Services;
 
 namespace Template.BusinessRule.PasswordManager.Services;
 
 /// <summary>
-/// 密碼管理服務，封裝密碼規則與雜湊驗證邏輯。
+/// 密碼規則、雜湊與驗證服務。
 /// </summary>
 public class PasswordManager(IServiceProvider serviceProvider) : IPasswordManager
 {
@@ -15,16 +15,18 @@ public class PasswordManager(IServiceProvider serviceProvider) : IPasswordManage
     public void ValidateNewPassword(string password)
     {
         if (string.IsNullOrWhiteSpace(password))
-            throw new ArgumentException("密碼不可為空。", nameof(password));
+            throw new ArgumentException("Password is required.", nameof(password));
 
-        if (password.Length < 8)
-            throw new ArgumentException("密碼長度至少需 8 碼。", nameof(password));
+        if (password.Length < 12)
+            throw new ArgumentException("Password must be at least 12 characters.", nameof(password));
 
-        var hasLetter = password.Any(char.IsLetter);
+        var hasUpper = password.Any(char.IsUpper);
+        var hasLower = password.Any(char.IsLower);
         var hasDigit = password.Any(char.IsDigit);
+        var hasSymbol = password.Any(ch => !char.IsLetterOrDigit(ch));
 
-        if (!hasLetter || !hasDigit)
-            throw new ArgumentException("密碼需同時包含英文字母與數字。", nameof(password));
+        if (!hasUpper || !hasLower || !hasDigit || !hasSymbol)
+            throw new ArgumentException("Password must include uppercase letters, lowercase letters, digits, and symbols.", nameof(password));
     }
 
     /// <inheritdoc />

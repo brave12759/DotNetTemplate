@@ -1,80 +1,21 @@
-DotNetTemplate Portfolio License v1.0
+MIT License
 
 Copyright (c) 2026 AaronChen
-All rights reserved.
 
-繁體中文
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-本專案以作品集與技術展示為目的公開。除法律另有強制規定外，第三方未經著作權人事前書面同意，不得將本專案之全部或一部用於商業用途。
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-允許事項：
-1. 個人閱覽、下載與非商業性質之本機研究。
-2. 非商業用途之學習、技術分析與參考。
-3. 基於本專案內容進行非公開、非營利之實驗與測試。
-
-禁止事項：
-1. 將本專案或其衍生版本用於任何商業活動、收費服務、接案、顧問服務、內部商業系統、代管服務或 SaaS。
-2. 重製、轉售、再授權、散布、上架、打包、課程販售、模板販售或作為商業產品之一部分。
-3. 移除、修改或遮蔽本授權、版權聲明、作者標示或其他權利管理資訊。
-4. 將本專案直接或實質上複製後，作為個人、團隊或公司產品、作品、履歷、提案或商業交付物。
-5. 利用本專案建立與原專案高度相似之商業競品，或以本專案為主要基礎對外營利。
-
-作者保留權利：
-1. 本授權不限制著作權人本人對本專案之使用、修改、整合、再授權、商業化、轉售、雙重授權或以其他任何方式再利用。
-2. 著作權人得自行於未來專案、工作成果、受僱關係、合作關係、商業產品或其他任何情境中重複使用本專案之全部或一部，而不受本授權限制。
-3. 著作權人得隨時以書面方式向任何個人、團隊、公司或其他實體授予額外權利、例外授權或商業授權。
-
-衍生作品：
-1. 任何修改、重構、翻譯、移植、延伸或結合本專案所形成之衍生作品，若涉及散布、部署、提供他人使用或任何商業情境，均須取得著作權人事前書面同意。
-2. 非商業性質之私人修改可自行保留，但不得對外作商業利用。
-
-智慧財產權：
-1. 本授權不移轉任何著作權、專利權、商標權、營業秘密或其他智慧財產權。
-2. 未明示授予之權利，均由著作權人保留。
-
-終止：
-若您違反本授權之任一條款，您基於本授權所取得之一切權利將立即終止，且您必須立即停止使用並刪除所持有之本專案與其衍生內容之所有副本。
-
-不提供保證：
-本專案按「現況」提供，不負任何明示或默示擔保。在法律允許之最大範圍內，著作權人不對任何損害、請求、責任或損失負責。
-
-商業授權：
-如需商業使用、合作、整合、轉授權或其他例外授權，請先透過 GitHub 與著作權人聯繫並取得書面同意。
-
-English
-
-This repository is published for portfolio and demonstration purposes. Except where required by applicable law, third parties may not use all or any substantial portion of this project for commercial purposes without prior written permission from the copyright holder.
-
-Permitted:
-1. Personal viewing, downloading, and local research for non-commercial purposes.
-2. Non-commercial learning, technical review, and reference.
-3. Private, non-public, non-profit experimentation and testing.
-
-Prohibited:
-1. Any commercial use, including paid services, consulting, client work, internal business systems, managed services, or SaaS.
-2. Reproduction, resale, relicensing, redistribution, hosting, bundling, course sales, template sales, or inclusion in any commercial product.
-3. Removal or alteration of this license, copyright notice, author attribution, or other rights management information.
-4. Copying this project directly or substantially for use as a personal, team, or company product, portfolio item, proposal, or commercial deliverable.
-5. Building a commercial competing product substantially based on this project.
-
-Rights reserved by the author:
-1. Nothing in this license restricts the copyright holder's own right to use, modify, combine, relicense, commercialize, resell, dual-license, or otherwise reuse this project.
-2. The copyright holder may reuse all or part of this project in future projects, employment, client work, collaborations, commercial products, or any other context without restriction under this license.
-3. The copyright holder may grant additional rights, exceptions, or commercial licenses in writing to any person, team, company, or other entity at any time.
-
-Derivative works:
-1. Any modification, refactor, translation, port, extension, or combined work that is distributed, deployed, offered to others, or used in any commercial context requires prior written permission from the copyright holder.
-2. Private non-commercial modifications may be kept privately, but may not be used commercially.
-
-Intellectual property:
-1. This license does not transfer any copyright, patent, trademark, trade secret, or other intellectual property rights.
-2. All rights not expressly granted are reserved.
-
-Termination:
-Any breach of these terms immediately terminates all rights granted under this license. You must stop using the project and delete all copies of the project and derivative materials in your possession.
-
-No warranty:
-This project is provided "as is" without warranty of any kind. To the maximum extent permitted by law, the copyright holder shall not be liable for any claim, damages, or other liability.
-
-Commercial licensing:
-For commercial use, cooperation, integration, relicensing, or any exception, contact the copyright holder through GitHub and obtain prior written permission.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

@@ -35,10 +35,16 @@ Template.WebApi/
 ├── Controllers/
 │   ├── BaseController.cs                   # 基底（[ApiController] [Route("[controller]/[action]")]）
 │   ├── AuthenticationController.cs         # 需授權 Controller 基底（[Authorize]）
-│   ├── AuthController.cs                   # POST /Auth/Login、POST /Auth/Logout
+│   ├── AuthController.cs                   # Login / Refresh / Me / Logout
 │   ├── BackgroundQueueController.cs        # /BackgroundQueue/*，背景工作佇列查詢
 │   ├── CryptographyController.cs           # POST /Cryptography/*（需 JWT）
 │   └── UserController.cs                   # /User/*（CRUD + ResetPassword，需 JWT）
+├── Extensions/
+│   └── SignalRInfrastructureExtensions.cs  # SignalR Hub + Queue handler 預設註冊
+├── Hubs/
+│   └── NotificationHub.cs                  # /hubs/notifications
+├── SignalR/
+│   └── QueuedSignalRMessageHandler.cs      # Queue worker 實際推播到 Hub
 ├── Converters/
 │   └── DateTimeJsonConverter.cs            # DateTime / DateTimeOffset JSON 時區轉換器
 ├── Filters/
@@ -47,7 +53,8 @@ Template.WebApi/
 │   └── SkipResponseWrapAttribute.cs        # 標記跳過 ResponseWrapper 的 Attribute
 ├── Models/
 │   └── Auth/
-│       └── LoginRequest.cs                 # POST /Auth/Login 請求模型
+│       ├── LoginRequest.cs                 # POST /Auth/Login 請求模型
+│       └── AuthTokenResponse.cs            # Login / Refresh Token 回傳模型
 ├── Services/
 │   ├── JwtService.cs                       # JWT Token 產生（實作 IJwtService）
 │   └── CurrentUserService.cs              # JWT Claims → CurrentUser（實作 ICurrentUserService）
@@ -82,4 +89,41 @@ AuthController                      ← 各 Action 自行標記 [AllowAnonymous]
 | DevBypass 免登入 | Development 環境自動通過驗證機制 | [DevBypass.md](Authentication/Doc/DevBypass.md) |
 | Filter 管線 | 全域例外處理、Response 包裝、執行順序 | [Filters.md](Filters/Doc/Filters.md) |
 | Background Queue | 背景資料庫佇列、HostedService 與前端查詢 API | [BackgroundQueue.md](../Template.Common/BackgroundQueue/Doc/BackgroundQueue.md) |
+| SignalR Queue | `/hubs/notifications` 與 Queue handler，預設搭配 BackgroundQueue 使用 | [SignalR.md](../Template.Common/SignalR/Doc/SignalR.md) |
 | 使用者管理 | 使用者 CRUD、重設密碼、參數驗證規則 | [UserService.md](../Template.BusinessRule/UserService/Doc/UserService.md) |
+ 
+---
+
+## 環境變數
+
+`Program.cs` 在綁定設定前會先載入 `Template.WebApi/.env` 與 `Template.WebApi/.env.{Environment}`。實際系統環境變數優先權高於 `.env` 檔，所有環境變數也會覆蓋 `appsettings*.json`。
+
+巢狀設定請使用雙底線表示：
+
+| 設定 | 環境變數 |
+|---|---|
+| `DatabaseSettings.ProjectConnectionString` | `DatabaseSettings__ProjectConnectionString` |
+| `DatabaseSettings.LogConnectionString` | `DatabaseSettings__LogConnectionString` |
+| `JwtSettings.SecretKey` | `JwtSettings__SecretKey` |
+| `JwtSettings.Issuer` | `JwtSettings__Issuer` |
+| `JwtSettings.Audience` | `JwtSettings__Audience` |
+| `CryptographyKeySettings.SymmetricKeyBase64` | `CryptographyKeySettings__SymmetricKeyBase64` |
+| `CryptographyKeySettings.SymmetricIvBase64` | `CryptographyKeySettings__SymmetricIvBase64` |
+| `CryptographyKeySettings.RsaPublicKeyPem` | `CryptographyKeySettings__RsaPublicKeyPem` |
+| `CryptographyKeySettings.RsaPrivateKeyPem` | `CryptographyKeySettings__RsaPrivateKeyPem` |
+
+## 日誌 API
+
+| Controller | API | 說明 |
+|---|---|---|
+| `LogController` | `GET /Log/UserOperationLogs` | 查詢使用者操作日誌，需要 `System.UserOperationLog:View` 權限 |
+| `LogController` | `GET /Log/QueueLogs` | 查詢佇列日誌，需要 `System.QueueLog:View` 權限 |
+| `LogController` | `GET /Log/SsoLogs` | 查詢 SSO 日誌，需要 `System.SsoLog:View` 權限 |
+
+日誌服務文件請參考 [LogService.md](../Template.BusinessRule/LogService/Doc/LogService.md)。
+
+`appsettings.Development.json` 已提供本機啟動所需的 JWT 基本設定。若需覆寫，可改用 `Template.WebApi/.env.example` 作為 `.env` 或 `.env.Development` 範本；`.env` 檔不會納入 git，且環境變數優先權仍高於 `appsettings*.json`。
+
+JWT 驗證設定目前可由 `JwtSettings` 組態區段或對應環境變數提供；缺少 `SecretKey`、`Issuer`、`Audience` 任一值時，應用程式仍會在啟動階段直接拋出例外並終止。
+
+HTTPS 由 hosting layer 處理。請在 IIS、反向代理或 ingress 綁定 443 與 SSL；API 本身不載入 PFX 憑證，也不強制 HTTPS redirect。

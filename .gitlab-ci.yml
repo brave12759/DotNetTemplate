@@ -7,7 +7,6 @@ include:
       rules:
         - if: '$RUN_OPENCODE == "true"'
       before_script:
-        # Install .NET 10 SDK for this project
         - apk add --no-cache dotnet10-sdk
 
 stages:
@@ -17,8 +16,14 @@ stages:
   - opencode
 
 default:
+  image: alpine:latest
   tags:
     - docker-socket-binding
+
+variables:
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
 
 .on_success: &on_success
   rules:
@@ -30,32 +35,48 @@ default:
       when: on_success
     - when: never
 
-image: alpine:latest 
+.dotnet_job: &dotnet_job
+  before_script:
+    - apk add --no-cache dotnet10-sdk
 
 build-job:
-  <<: [ *on_success ]
+  <<: [*on_success, *dotnet_job]
   stage: build
   script:
-    - echo "開始建置專案..."
-    - mkdir -p build/
-    - echo "這是一個編譯好的檔案" > build/app.bin
+    - dotnet restore Template.slnx
+    - dotnet build Template.slnx --no-restore --configuration Release
   artifacts:
     paths:
-      - build/
+      - "**/bin/Release/"
+      - "**/obj/"
     expire_in: 1 hour
 
 unit-test-job:
-  <<: [ *on_success ]
+  <<: [*on_success, *dotnet_job]
   stage: test
+  dependencies: []
+  coverage: '/TOTAL_COVERAGE=([0-9]+(?:\.[0-9]+)?)%/'
   script:
-    - echo "執行測試中..."
-    - ls build/
-    - sleep 5
-    - echo "測試通過"
+    - dotnet restore Template.Test/Template.Test.csproj
+    - dotnet test Template.Test/Template.Test.csproj --no-restore --configuration Release --results-directory Template.Test/TestResults --logger "trx;LogFileName=test-results.trx" /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput="$CI_PROJECT_DIR/Template.Test/TestResults/coverage/" /p:Exclude="[Template.WebApi]*"
+    - find Template.Test/TestResults -maxdepth 4 -type f -print
+    - test -f Template.Test/TestResults/coverage/coverage.cobertura.xml
+    - RATE=$(awk -F'line-rate="' 'NF > 1 { split($2, a, "\""); print a[1]; exit }' Template.Test/TestResults/coverage/coverage.cobertura.xml)
+    - test -n "$RATE"
+    - COVERAGE=$(awk -v rate="$RATE" 'BEGIN { printf "%.2f", rate * 100 }')
+    - echo "TOTAL_COVERAGE=${COVERAGE}%"
+  artifacts:
+    when: always
+    paths:
+      - Template.Test/TestResults/
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: Template.Test/TestResults/coverage/coverage.cobertura.xml
+    expire_in: 1 week
 
 cleanup-job:
-  <<: [ *on_success ]
+  <<: [*on_success]
   stage: cleanup
   script:
-    - echo "執行環境清理..."
-    - rm -rf build/
+    - echo "cleanup completed"

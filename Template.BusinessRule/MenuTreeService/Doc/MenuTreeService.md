@@ -1,6 +1,6 @@
 # MenuTreeService 選單樹功能
 
-[回到根目錄 README](../../../README.md) / [回到 Template.BusinessRule](../../README.md)
+[← 返回方案 README](../../../README.md) ｜ [← 返回上層 README](../../README.md)
 
 ## 功能說明
 
@@ -14,6 +14,11 @@
 - 新增選單
 - 更新選單
 - 刪除選單
+
+核心稽核：
+
+- 新增、更新、刪除選單時，會寫入 `UserOperationLog`。
+- `Module` 固定為 `MenuTree`，`TargetType` 為 `Sys_MenuTree`。
 
 刪除選單時，若該選單仍有子選單，服務會拒絕刪除。更新父層時，服務會檢查不可將選單掛到自己或自己的子節點底下，避免產生循環階層。
 

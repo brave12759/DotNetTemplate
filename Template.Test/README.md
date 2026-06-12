@@ -21,6 +21,8 @@ Template.Test/
 │   ├── BackgroundTaskQueueTests.cs
 │   ├── InMemoryTokenRevocationServiceTests.cs
 │   ├── MenuTreeServiceTests.cs
+│   ├── RoleGroupServiceTests.cs
+│   ├── FunctionPermissionServiceTests.cs
 │   ├── ModelTests.cs
 │   ├── EnumExtensionsTests.cs    
 │   ├── PasswordManagerTests.cs
@@ -37,6 +39,8 @@ Template.Test/
 |---|---|
 | `UserService` | CRUD、篩選查詢、重設 / 修改密碼、重複帳號防呆、參數驗證 |
 | `MenuTreeService` | CRUD、階層樹查詢、重複代碼防呆、父層循環防呆、刪除子節點保護 |
+| `RoleGroupService` | CRUD、階層樹查詢、父層循環防呆、刪除子孫節點、使用者角色群組對應 |
+| `FunctionPermissionService` | CRUD、階層樹查詢、一鍵補足 CRUDAF 操作權限、角色群組指派、使用者權限樹 |
 | `PasswordManager` | 密碼雜湊、比對驗證、規則驗證（長度、字母、數字） |
 | `CryptographyService` | AES 加解密對稱性、PBKDF2 雜湊驗證、錯誤金鑰格式 |
 | `ClockUtil` | 格式化、解析、UTC/本地轉換、DateOnly/TimeOnly 互轉、Unix Time |
