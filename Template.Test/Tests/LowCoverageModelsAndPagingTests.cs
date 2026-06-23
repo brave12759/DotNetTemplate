@@ -117,14 +117,14 @@ public class CommonModelCoverageTests
 
         Assert.AreEqual(200, success.Status);
         Assert.AreEqual("done", success.Message);
-        Assert.AreEqual("ok", success.Content);
+        Assert.AreEqual("ok", success.Details);
 
         Assert.AreEqual(400, fail.Status);
         Assert.AreEqual("bad", fail.Message);
-        Assert.IsNull(fail.Content);
+        Assert.IsNull(fail.Details);
 
         Assert.AreEqual((int)MessageEnum.NotFound, from.Status);
-        Assert.AreEqual("x", from.Content);
+        Assert.AreEqual("x", from.Details);
         Assert.IsFalse(string.IsNullOrWhiteSpace(from.Message));
     }
 

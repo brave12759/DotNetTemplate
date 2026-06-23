@@ -21,13 +21,13 @@ public class ResponseMessage<T>
     /// <summary>
     /// 傳遞資料
     /// </summary>
-    public T? Content { get; set; }
+    public T? Details { get; set; }
 
     public static ResponseMessage<T> Success(T? content, string message = "成功") =>
-        new() { Status = 200, Message = message, Content = content };
+        new() { Status = 200, Message = message, Details = content };
 
     public static ResponseMessage<T> Fail(int status, string message) =>
-        new() { Status = status, Message = message, Content = default };
+        new() { Status = status, Message = message, Details = default };
 
     /// <summary>
     /// 以 MessageEnum 建立回傳訊息，自動帶入 Status 與預設 Description 訊息
@@ -37,6 +37,6 @@ public class ResponseMessage<T>
         {
             Status = (int)code,
             Message = message ?? code.GetDescription(),
-            Content = content
+            Details = content
         };
 }

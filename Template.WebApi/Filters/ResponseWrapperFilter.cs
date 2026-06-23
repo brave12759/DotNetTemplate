@@ -1,5 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.AspNetCore.WebUtilities;
+using Template.Common.Enums;
+using Template.Common.Extensions;
 using Template.Common.Models;
 
 namespace Template.WebApi.Filters;
@@ -57,7 +60,7 @@ public class ResponseWrapperFilter : IResultFilter, IOrderedFilter
     /// </summary>
     private static object WrapValue(int statusCode, object? value)
     {
-        var message = statusCode is >= 200 and < 300 ? "成功" : "錯誤";
+        var message = GetMessage(statusCode);
         var responseType = typeof(ResponseMessage<>).MakeGenericType(value?.GetType() ?? typeof(object));
         var factory = statusCode is >= 200 and < 300
             ? responseType.GetMethod(nameof(ResponseMessage<object>.Success))!
@@ -66,5 +69,11 @@ public class ResponseWrapperFilter : IResultFilter, IOrderedFilter
         return statusCode is >= 200 and < 300
             ? factory.Invoke(null, [value, message])!
             : factory.Invoke(null, [statusCode, value?.ToString() ?? message])!;
+    }
+
+    private static string GetMessage(int statusCode)
+    {
+        return statusCode.ToEnum<MessageEnum>()?.GetDescription()
+            ?? ReasonPhrases.GetReasonPhrase(statusCode);
     }
 }

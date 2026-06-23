@@ -1,13 +1,18 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.OpenApi;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Template.Common.Enums;
+using Template.Common.Extensions;
 using Template.Common.Models;
 using Template.WebApi.Converters;
 using Template.WebApi.Filters;
+using Template.WebApi.Swagger;
 
 namespace Template.Test.Tests;
 
@@ -26,7 +31,7 @@ public class ResponseWrapperFilterTests
         var response = (ResponseMessage<string>)result.Value!;
         Assert.AreEqual(200, result.StatusCode);
         Assert.AreEqual(200, response.Status);
-        Assert.AreEqual("hello", response.Content);
+        Assert.AreEqual("hello", response.Details);
     }
 
     [TestMethod]
@@ -42,7 +47,7 @@ public class ResponseWrapperFilterTests
         Assert.AreEqual(400, result.StatusCode);
         Assert.AreEqual(400, response.Status);
         Assert.AreEqual("bad request", response.Message);
-        Assert.IsNull(response.Content);
+        Assert.IsNull(response.Details);
     }
 
     [TestMethod]
@@ -70,7 +75,7 @@ public class ResponseWrapperFilterTests
         var response = (ResponseMessage<object>)result.Value!;
         Assert.AreEqual(200, result.StatusCode);
         Assert.AreEqual(200, response.Status);
-        Assert.IsNull(response.Content);
+        Assert.IsNull(response.Details);
     }
 
     [TestMethod]
@@ -102,6 +107,89 @@ public class ResponseWrapperFilterTests
             [],
             result,
             controller: new object());
+    }
+}
+
+[TestClass]
+public class ResponseMessageOperationFilterTests
+{
+    [TestMethod]
+    public void Apply_Should_WrapExistingAndDefaultResponses_WithResponseMessageSchema()
+    {
+        var filter = new ResponseMessageOperationFilter();
+        var operation = CreateOperation(new OpenApiSchema
+        {
+            Type = JsonSchemaType.String
+        });
+
+        filter.Apply(operation, null!);
+
+        var expectedStatusCodes = new[] { "200", "default" };
+        foreach (var statusCode in expectedStatusCodes)
+        {
+            Assert.IsTrue(operation.Responses!.ContainsKey(statusCode));
+
+            var schema = operation.Responses[statusCode].Content!["application/json"].Schema!;
+            CollectionAssert.AreEquivalent(
+                new[] { "Status", "Message", "Details" },
+                schema.Properties!.Keys.ToArray());
+        }
+
+        Assert.AreEqual(MessageEnum.BadRequest.GetDescription(), GetMessage(operation, "default"));
+    }
+
+    [TestMethod]
+    public void Apply_AlreadyWrappedSchema_Should_NotWrapAgain()
+    {
+        var filter = new ResponseMessageOperationFilter();
+        var wrappedSchema = new OpenApiSchema
+        {
+            Type = JsonSchemaType.Object,
+            Properties = new Dictionary<string, IOpenApiSchema>()
+        };
+        wrappedSchema.Properties["Status"] = new OpenApiSchema();
+        wrappedSchema.Properties["Message"] = new OpenApiSchema();
+        wrappedSchema.Properties["Details"] = new OpenApiSchema();
+
+        var operation = CreateOperation(wrappedSchema);
+
+        filter.Apply(operation, null!);
+
+        Assert.AreSame(wrappedSchema, operation.Responses!["200"].Content!["application/json"].Schema);
+    }
+
+    private static OpenApiOperation CreateOperation(IOpenApiSchema schema)
+    {
+        var response = new OpenApiResponse
+        {
+            Description = "OK",
+            Content = new Dictionary<string, OpenApiMediaType>()
+        };
+        response.Content["application/json"] = new OpenApiMediaType
+        {
+            Schema = schema
+        };
+
+        return new OpenApiOperation
+        {
+            Responses = new OpenApiResponses
+            {
+                ["200"] = response
+            }
+        };
+    }
+
+    private static string? GetMessage(OpenApiOperation operation, string statusCode)
+    {
+        var example = operation.Responses![statusCode]
+            .Content!["application/json"]
+            .Schema!
+            .Properties!["Message"]
+            .Example;
+
+        return example is JsonValue value && value.TryGetValue<string>(out var message)
+            ? message
+            : null;
     }
 }
 

@@ -12,7 +12,7 @@ public class ResponseMessageTests
         var result = ResponseMessage<string>.Success("hello");
         Assert.AreEqual(200, result.Status);
         Assert.AreEqual("成功", result.Message);
-        Assert.AreEqual("hello", result.Content);
+        Assert.AreEqual("hello", result.Details);
     }
 
     [TestMethod]
@@ -21,7 +21,7 @@ public class ResponseMessageTests
         var result = ResponseMessage<int>.Success(42, "自訂成功訊息");
         Assert.AreEqual(200, result.Status);
         Assert.AreEqual("自訂成功訊息", result.Message);
-        Assert.AreEqual(42, result.Content);
+        Assert.AreEqual(42, result.Details);
     }
 
     [TestMethod]
@@ -29,7 +29,7 @@ public class ResponseMessageTests
     {
         var result = ResponseMessage<string?>.Success(null);
         Assert.AreEqual(200, result.Status);
-        Assert.IsNull(result.Content);
+        Assert.IsNull(result.Details);
     }
 
     [TestMethod]
@@ -38,7 +38,7 @@ public class ResponseMessageTests
         var result = ResponseMessage<string>.Fail(400, "參數錯誤");
         Assert.AreEqual(400, result.Status);
         Assert.AreEqual("參數錯誤", result.Message);
-        Assert.IsNull(result.Content);
+        Assert.IsNull(result.Details);
     }
 
     [TestMethod]
@@ -47,7 +47,7 @@ public class ResponseMessageTests
         var result = ResponseMessage<object>.Fail(401, "未授權");
         Assert.AreEqual(401, result.Status);
         Assert.AreEqual("未授權", result.Message);
-        Assert.IsNull(result.Content);
+        Assert.IsNull(result.Details);
     }
 }
 

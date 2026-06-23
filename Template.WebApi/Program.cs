@@ -23,6 +23,7 @@ using Template.WebApi.Converters;
 using Template.WebApi.Extensions;
 using Template.WebApi.Filters;
 using Template.WebApi.Services;
+using Template.WebApi.Swagger;
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Warning()
@@ -239,6 +240,7 @@ try
     builder.Services.AddSwaggerGen(options =>
     {
         options.SwaggerDoc("v1", new OpenApiInfo { Title = apiSettings.Name, Version = "v1" });
+        options.OperationFilter<ResponseMessageOperationFilter>();
 
         var xmlFile = $"{typeof(Program).Assembly.GetName().Name}.xml";
         var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
