@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Template.Common.Enums;
+using Template.Common.Extensions;
 using Template.Common.Models;
 using Template.Common.Services;
 using Template.DataAccess.ProjectDbContext;
@@ -53,10 +55,11 @@ public class GlobalExceptionLogFilterTests
         var result = (ObjectResult)exceptionContext.Result;
         Assert.AreEqual(500, result.StatusCode);
 
-        var payload = result.Value as ResponseMessage<object>;
+        var payload = result.Value as ResponseMessage<string>;
         Assert.IsNotNull(payload);
         Assert.AreEqual(500, payload.Status);
-        Assert.AreEqual("系統發生未預期錯誤，請稍後再試。", payload.Message);
+        Assert.AreEqual(MessageEnum.InternalServerError.GetDescription(), payload.Message);
+        Assert.AreEqual("系統發生未預期錯誤，請稍後再試。", payload.Details);
     }
 }
 

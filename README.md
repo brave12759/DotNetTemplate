@@ -296,7 +296,7 @@ dotnet build MyApp.slnx
 所有 API 回傳格式：
 
 ```json
-{ "Status": 200, "Message": "成功", "Content": { } }
+{ "Status": 200, "Message": "成功", "Details": { } }
 ```
 
 → [完整說明](Template.Common/Models/Doc/ResponseMessage.md)
@@ -420,3 +420,4 @@ readinessProbe:
   initialDelaySeconds: 5
   periodSeconds: 10
 ```
+

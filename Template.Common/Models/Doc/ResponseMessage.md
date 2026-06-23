@@ -37,7 +37,7 @@ public class ResponseMessage<T>
 {
   "Status": 200,
   "Message": "成功",
-  "Content": { "Token": "eyJhbGci..." }
+  "Details": { "Token": "eyJhbGci..." }
 }
 ```
 
@@ -48,7 +48,7 @@ public class ResponseMessage<T>
 | 方法 | 說明 |
 |---|---|
 | `Success(content, message)` | Status=200，預設 Message="成功" |
-| `Fail(status, message)` | 指定任意 Status 與 Message，Content=null |
+| `Fail(status, message)` | 指定任意 Status 與 Message，Details=null |
 | `From(MessageEnum, content, message)` | 由 MessageEnum 取得 Status，message 省略時取 Description |
 
 ### 使用範例
@@ -86,7 +86,7 @@ return Ok(ResponseMessage<object>.Fail(400, "帳號格式不正確。"));
 `ResponseWrapperFilter`（`IResultFilter`, `Order = int.MaxValue`）會攔截所有 Action 結果：
 
 - `ObjectResult` → 包成 `ResponseMessage<T>`
-- `EmptyResult`（void/無回傳）→ 包成 `ResponseMessage<object>` Content=null
+- `EmptyResult`（void/無回傳）→ 包成 `ResponseMessage<object>` Details=null
 - 已是 `ResponseMessage<T>` → 跳過，不重複包裝
 - 標記 `[SkipResponseWrap]` 的 Action / Controller → 跳過
 
@@ -101,3 +101,4 @@ public IActionResult DownloadFile()
     return File(...);   // 直接回傳，不包裝
 }
 ```
+

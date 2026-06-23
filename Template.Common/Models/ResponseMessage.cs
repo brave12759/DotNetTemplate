@@ -23,11 +23,16 @@ public class ResponseMessage<T>
     /// </summary>
     public T? Details { get; set; }
 
-    public static ResponseMessage<T> Success(T? content, string message = "成功") =>
-        new() { Status = 200, Message = message, Details = content };
+    public static ResponseMessage<T> Success(T? content, string? message = null) =>
+        new() { Status = 200, Message = message ?? MessageEnum.Success.GetDescription(), Details = content };
 
-    public static ResponseMessage<T> Fail(int status, string message) =>
-        new() { Status = status, Message = message, Details = default };
+    public static ResponseMessage<T> Fail(int status, string? message = null, T? details = default) =>
+        new()
+        {
+            Status = status,
+            Message = message ?? status.ToEnum<MessageEnum>()?.GetDescription() ?? string.Empty,
+            Details = details
+        };
 
     /// <summary>
     /// 以 MessageEnum 建立回傳訊息，自動帶入 Status 與預設 Description 訊息

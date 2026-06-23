@@ -12,7 +12,6 @@ using Template.Common.Extensions;
 using Template.Common.Models;
 using Template.WebApi.Converters;
 using Template.WebApi.Filters;
-using Template.WebApi.Swagger;
 
 namespace Template.Test.Tests;
 
@@ -46,8 +45,8 @@ public class ResponseWrapperFilterTests
         var response = (ResponseMessage<string>)result.Value!;
         Assert.AreEqual(400, result.StatusCode);
         Assert.AreEqual(400, response.Status);
-        Assert.AreEqual("bad request", response.Message);
-        Assert.IsNull(response.Details);
+        Assert.AreEqual(MessageEnum.BadRequest.GetDescription(), response.Message);
+        Assert.AreEqual("bad request", response.Details);
     }
 
     [TestMethod]
@@ -75,6 +74,22 @@ public class ResponseWrapperFilterTests
         var response = (ResponseMessage<object>)result.Value!;
         Assert.AreEqual(200, result.StatusCode);
         Assert.AreEqual(200, response.Status);
+        Assert.IsNull(response.Details);
+    }
+
+    [TestMethod]
+    public void OnResultExecuting_StatusCodeResult_Should_WrapResponse()
+    {
+        var filter = new ResponseWrapperFilter();
+        var context = CreateContext(new StatusCodeResult(404));
+
+        filter.OnResultExecuting(context);
+
+        var result = (ObjectResult)context.Result;
+        var response = (ResponseMessage<object>)result.Value!;
+        Assert.AreEqual(404, result.StatusCode);
+        Assert.AreEqual(404, response.Status);
+        Assert.AreEqual(MessageEnum.NotFound.GetDescription(), response.Message);
         Assert.IsNull(response.Details);
     }
 

@@ -23,7 +23,6 @@ using Template.WebApi.Converters;
 using Template.WebApi.Extensions;
 using Template.WebApi.Filters;
 using Template.WebApi.Services;
-using Template.WebApi.Swagger;
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Warning()

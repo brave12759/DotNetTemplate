@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Template.Common.Enums;
+using Template.Common.Extensions;
 using Template.Common.Models;
 
 namespace Template.WebApi.Filters;
@@ -39,7 +41,10 @@ public class GlobalExceptionLogFilter(ILogger<GlobalExceptionLogFilter> logger) 
             tokenId,
             httpContext.Connection.RemoteIpAddress?.ToString());
 
-        context.Result = new ObjectResult(ResponseMessage<object>.Fail(500, GenericErrorMessage))
+        context.Result = new ObjectResult(ResponseMessage<string>.Fail(
+            (int)MessageEnum.InternalServerError,
+            MessageEnum.InternalServerError.GetDescription(),
+            GenericErrorMessage))
         {
             StatusCode = 500
         };
