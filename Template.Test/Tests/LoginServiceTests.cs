@@ -508,6 +508,9 @@ public class LoginServiceTests
         public Task<System.Security.Claims.ClaimsPrincipal?> ValidateTokenAsync(string token, bool validateRevocation = true) =>
             Task.FromResult<System.Security.Claims.ClaimsPrincipal?>(null);
 
+        public Task<System.Security.Claims.ClaimsPrincipal?> ValidateExpiredTokenAsync(string token) =>
+            Task.FromResult<System.Security.Claims.ClaimsPrincipal?>(null);
+
         public Task<JwtSettingDto> GetSettingsAsync() => throw new NotImplementedException();
 
         public Task UpdateSettingsAsync(JwtSettingUpdateRequest request, string updatedBy) => throw new NotImplementedException();

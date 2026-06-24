@@ -39,7 +39,7 @@ public class FunctionPermissionController(
     /// 依 FunctionPermissionId 取得單筆功能操作權限。
     /// </summary>
     [HttpGet]
-    public async Task<IActionResult> GetById([FromQuery] int functionPermissionId)
+    public async Task<IActionResult> GetById([FromRoute] int functionPermissionId)
     {
         try
         {
@@ -96,7 +96,7 @@ public class FunctionPermissionController(
     /// 刪除功能操作權限；會同步刪除所有子孫權限與角色群組對應資料。
     /// </summary>
     [HttpDelete]
-    public async Task<IActionResult> Delete([FromQuery] int functionPermissionId)
+    public async Task<IActionResult> Delete([FromRoute] int functionPermissionId)
     {
         try
         {
@@ -126,7 +126,7 @@ public class FunctionPermissionController(
     /// 取得指定角色群組已指派的功能操作權限平面清單。
     /// </summary>
     [HttpGet]
-    public async Task<IActionResult> GetRoleGroupPermissions([FromQuery] int roleGroupId, [FromQuery] bool? isEnable)
+    public async Task<IActionResult> GetRoleGroupPermissions([FromRoute] int roleGroupId, [FromQuery] bool? isEnable)
     {
         try
         {
@@ -143,7 +143,7 @@ public class FunctionPermissionController(
     /// 取得指定角色群組已指派的功能操作權限樹。
     /// </summary>
     [HttpGet]
-    public async Task<IActionResult> RoleGroupTree([FromQuery] int roleGroupId, [FromQuery] bool? isEnable)
+    public async Task<IActionResult> RoleGroupTree([FromRoute] int roleGroupId, [FromQuery] bool? isEnable)
     {
         try
         {
@@ -180,7 +180,7 @@ public class FunctionPermissionController(
     /// 取得指定使用者經由角色群組取得的功能操作權限樹。
     /// </summary>
     [HttpGet]
-    public async Task<IActionResult> UserTree([FromQuery] string userId, [FromQuery] bool? isEnable)
+    public async Task<IActionResult> UserTree([FromRoute] string userId, [FromQuery] bool? isEnable)
     {
         try
         {

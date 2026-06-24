@@ -67,7 +67,7 @@ public class SsoController(
 
     [HttpDelete]
     [RequirePermission(ManageSsoClientsPermission)]
-    public async Task<IActionResult> DeleteClient([FromQuery] int id)
+    public async Task<IActionResult> DeleteClient([FromRoute] int id)
     {
         try
         {
@@ -93,6 +93,18 @@ public class SsoController(
     {
         var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
         var result = await ssoService.LoginAsync(request.ClientId, request.ClientSecret, ip);
+        if (!result.Success)
+            return Unauthorized(ToMessageResponse(result.MessageCode ?? SsoMessageEnum.InvalidClientCredentials));
+
+        return Ok(new { result.Token });
+    }
+
+    [AllowAnonymous]
+    [HttpPost]
+    public async Task<IActionResult> Refresh([FromBody] TokenValidateRequest request)
+    {
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
+        var result = await ssoService.RefreshAsync(request.Token, ip);
         if (!result.Success)
             return Unauthorized(ToMessageResponse(result.MessageCode ?? SsoMessageEnum.InvalidClientCredentials));
 

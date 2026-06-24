@@ -39,7 +39,7 @@ public class RoleGroupController(
     /// 依 RoleGroupId 取得單筆角色群組。
     /// </summary>
     [HttpGet]
-    public async Task<IActionResult> GetById([FromQuery] int roleGroupId)
+    public async Task<IActionResult> GetById([FromRoute] int roleGroupId)
     {
         try
         {
@@ -96,7 +96,7 @@ public class RoleGroupController(
     /// 刪除角色群組；會同步刪除所有子孫角色群組與使用者對應資料。
     /// </summary>
     [HttpDelete]
-    public async Task<IActionResult> Delete([FromQuery] int roleGroupId)
+    public async Task<IActionResult> Delete([FromRoute] int roleGroupId)
     {
         try
         {
@@ -116,8 +116,7 @@ public class RoleGroupController(
     /// 取得指定使用者擁有的角色群組。
     /// </summary>
     [HttpGet]
-    [ActionName("User")]
-    public async Task<IActionResult> GetUserRoleGroups([FromQuery] string userId, [FromQuery] bool? isEnable)
+    public async Task<IActionResult> GetUserRoleGroups([FromRoute] string userId, [FromQuery] bool? isEnable)
     {
         try
         {

@@ -37,7 +37,7 @@ public class MenuTreeController(
     /// 依主鍵取得選單。
     /// </summary>
     [HttpGet]
-    public async Task<IActionResult> GetById([FromQuery] int id)
+    public async Task<IActionResult> GetById([FromRoute] int id)
     {
         try
         {
@@ -94,7 +94,7 @@ public class MenuTreeController(
     /// 刪除選單。
     /// </summary>
     [HttpDelete]
-    public async Task<IActionResult> Delete([FromQuery] int id)
+    public async Task<IActionResult> Delete([FromRoute] int id)
     {
         try
         {

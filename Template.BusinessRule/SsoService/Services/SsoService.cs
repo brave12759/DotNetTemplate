@@ -193,6 +193,37 @@ public class SsoService(IServiceProvider serviceProvider) : BaseService(serviceP
             new { Reason = "Success" });
         return SsoTokenResult.Ok(token);
     }
+
+    /// <inheritdoc />
+    public async Task<SsoTokenResult> RefreshAsync(string token, string ip)
+    {
+        var principal = await _jwtService.Value.ValidateExpiredTokenAsync(token);
+        if (principal is null)
+        {
+            await WriteSsoLogAsync(string.Empty, "RefreshToken", "Failure", ip, "SSO Token 刷新失敗：Token 無效。",
+                new { Reason = "InvalidToken" });
+            return SsoTokenResult.Fail(SsoMessageEnum.InvalidClientCredentials);
+        }
+
+        var tokenType = principal.FindFirst("token_type")?.Value;
+        var clientId = principal.FindFirst("client_id")?.Value ?? principal.Identity?.Name ?? string.Empty;
+        var clientEnabled = await Db.Sso_Clients
+            .AsNoTracking()
+            .AnyAsync(c => c.ClientId == clientId && c.IsEnable);
+
+        if (tokenType != "server" || string.IsNullOrWhiteSpace(clientId) || !clientEnabled)
+        {
+            await WriteSsoLogAsync(clientId, "RefreshToken", "Failure", ip, "SSO Token 刷新失敗：Token 類型或 Client 狀態不符。",
+                new { Reason = "ClientTypeOrStateMismatch", TokenType = tokenType, ClientEnabled = clientEnabled });
+            return SsoTokenResult.Fail(SsoMessageEnum.InvalidClientCredentials);
+        }
+
+        var newToken = await _jwtService.Value.GenerateServerTokenAsync(clientId, ip);
+        await WriteSsoLogAsync(clientId, "RefreshToken", "Success", ip, "SSO Token 刷新成功。",
+            new { Reason = "Success" });
+        return SsoTokenResult.Ok(newToken);
+    }
+
     /// <inheritdoc />
     public async Task<SsoTokenValidateResult> ValidateTokenAsync(string token)
     {

@@ -37,7 +37,7 @@ public class DepartmentController(
     /// 依部門 ID 查詢單筆部門。
     /// </summary>
     [HttpGet]
-    public async Task<IActionResult> GetById([FromQuery] int deptId)
+    public async Task<IActionResult> GetById([FromRoute] int deptId)
     {
         try
         {
@@ -94,7 +94,7 @@ public class DepartmentController(
     /// 刪除部門；有子部門或使用者歸屬時不可刪除。
     /// </summary>
     [HttpDelete]
-    public async Task<IActionResult> Delete([FromQuery] int deptId)
+    public async Task<IActionResult> Delete([FromRoute] int deptId)
     {
         try
         {

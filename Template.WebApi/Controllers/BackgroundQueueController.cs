@@ -54,7 +54,7 @@ public class BackgroundQueueController(
     /// 取得單一背景工作明細。
     /// </summary>
     [HttpGet]
-    public async Task<IActionResult> GetById([FromQuery] long id, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetById([FromRoute] long id, CancellationToken cancellationToken)
     {
         try
         {

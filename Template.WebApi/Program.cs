@@ -22,6 +22,7 @@ using Template.WebApi.Authentication;
 using Template.WebApi.Converters;
 using Template.WebApi.Extensions;
 using Template.WebApi.Filters;
+using Template.WebApi.Routing;
 using Template.WebApi.Services;
 
 Log.Logger = new LoggerConfiguration()
@@ -225,6 +226,7 @@ try
 
     builder.Services.AddControllers(options =>
     {
+        options.Conventions.Add(new RestfulRouteConvention());
         options.Filters.Add<GlobalExceptionLogFilter>();
         options.Filters.Add<ResponseWrapperFilter>();
     })

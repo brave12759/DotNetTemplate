@@ -55,7 +55,7 @@ public class UserController(
     /// 依主鍵取得單一使用者。
     /// </summary>
     [HttpGet]
-    public async Task<IActionResult> GetById([FromQuery] int id)
+    public async Task<IActionResult> GetById([FromRoute] int id)
     {
         try
         {
@@ -116,7 +116,7 @@ public class UserController(
     /// 刪除使用者。
     /// </summary>
     [HttpDelete]
-    public async Task<IActionResult> Delete([FromQuery] int id)
+    public async Task<IActionResult> Delete([FromRoute] int id)
     {
         try
         {

@@ -28,11 +28,11 @@ public class CryptographyController(
     {
         try
         {
-            var key = _cryptographyService.GenerateSymmetricKey(keySizeBits);
+            var (keyBase64, ivBase64) = _cryptographyService.GenerateSymmetricKey(keySizeBits);
             return Ok(new
             {
-                key.KeyBase64,
-                key.IvBase64,
+                KeyBase64 = keyBase64,
+                IvBase64 = ivBase64,
                 keySizeBits
             });
         }
@@ -90,11 +90,11 @@ public class CryptographyController(
     {
         try
         {
-            var pair = _cryptographyService.GenerateRsaKeyPair(request.KeySizeBits);
+            var (publicKeyPem, privateKeyPem) = _cryptographyService.GenerateRsaKeyPair(request.KeySizeBits);
             return Ok(new
             {
-                pair.PublicKeyPem,
-                pair.PrivateKeyPem,
+                PublicKeyPem = publicKeyPem,
+                PrivateKeyPem = privateKeyPem,
                 request.KeySizeBits
             });
         }

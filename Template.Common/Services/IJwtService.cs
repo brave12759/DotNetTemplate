@@ -45,6 +45,13 @@ public interface IJwtService
     Task<ClaimsPrincipal?> ValidateTokenAsync(string token, bool validateRevocation = true);
 
     /// <summary>
+    /// 驗證已過期 JWT 的簽章與發行資訊，並回傳對應身分資訊。
+    /// </summary>
+    /// <param name="token">待驗證的已過期 JWT 字串。</param>
+    /// <returns>驗證成功回傳 ClaimsPrincipal，失敗回傳 null。</returns>
+    Task<ClaimsPrincipal?> ValidateExpiredTokenAsync(string token);
+
+    /// <summary>
     /// 取得目前 JWT 設定。
     /// </summary>
     /// <returns>JWT 設定內容。</returns>

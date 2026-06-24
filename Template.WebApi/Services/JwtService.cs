@@ -117,6 +117,26 @@ public class JwtService(
         }
     }
 
+    /// <inheritdoc />
+    public async Task<ClaimsPrincipal?> ValidateExpiredTokenAsync(string token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+            return null;
+
+        var settings = await GetSettingsAsync();
+        var parameters = BuildValidationParameters(settings, validateLifetime: false);
+        var handler = new JwtSecurityTokenHandler();
+
+        try
+        {
+            return handler.ValidateToken(token, parameters, out _);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     /// <summary>
     /// 取得目前 JWT 設定：核心參數來自環境變數，過期時間來自資料庫。
     /// </summary>
@@ -181,13 +201,13 @@ public class JwtService(
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    private static TokenValidationParameters BuildValidationParameters(JwtSettingDto settings)
+    private static TokenValidationParameters BuildValidationParameters(JwtSettingDto settings, bool validateLifetime = true)
     {
         return new TokenValidationParameters
         {
             ValidateIssuer = true,
             ValidateAudience = true,
-            ValidateLifetime = true,
+            ValidateLifetime = validateLifetime,
             ValidateIssuerSigningKey = true,
             ValidIssuer = settings.Issuer,
             ValidAudience = settings.Audience,

@@ -249,6 +249,45 @@ public class SsoServiceTests
     }
 
     [TestMethod]
+    public async Task RefreshAsync_ExpiredServerTokenForEnabledClient_Should_ReturnNewToken()
+    {
+        using var scope = BuildScope();
+        var db = scope.ServiceProvider.GetRequiredService<ProjectDbContext>();
+        db.Sso_Clients.Add(CreateClient("erp-system", "ERP 系統", "Secret@123456"));
+        await db.SaveChangesAsync();
+
+        var sut = new SsoService(scope.ServiceProvider);
+        var result = await sut.RefreshAsync("expired-server-token", "127.0.0.1");
+
+        Assert.IsTrue(result.Success);
+        Assert.AreEqual("server-token-for-erp-system-from-127.0.0.1", result.Token);
+
+        var logService = scope.ServiceProvider.GetRequiredService<RecordingLogService>();
+        Assert.AreEqual(1, logService.SsoLogs.Count);
+        Assert.AreEqual("RefreshToken", logService.SsoLogs[0].EventName);
+        Assert.AreEqual("Success", logService.SsoLogs[0].Result);
+    }
+
+    [TestMethod]
+    public async Task RefreshAsync_PersonalToken_Should_ReturnFail()
+    {
+        using var scope = BuildScope();
+        var db = scope.ServiceProvider.GetRequiredService<ProjectDbContext>();
+        db.Sso_Clients.Add(CreateClient("erp-system", "ERP 系統", "Secret@123456"));
+        await db.SaveChangesAsync();
+
+        var sut = new SsoService(scope.ServiceProvider);
+        var result = await sut.RefreshAsync("expired-personal-token", "127.0.0.1");
+
+        Assert.IsFalse(result.Success);
+        Assert.AreEqual(SsoMessageEnum.InvalidClientCredentials, result.MessageCode);
+
+        var logService = scope.ServiceProvider.GetRequiredService<RecordingLogService>();
+        var metadataJson = System.Text.Json.JsonSerializer.Serialize(logService.SsoLogs.Single().Metadata);
+        StringAssert.Contains(metadataJson, "\"Reason\":\"ClientTypeOrStateMismatch\"");
+    }
+
+    [TestMethod]
     public async Task DeleteClientAsync_ExistingClient_Should_DeleteAndWriteAuditLog()
     {
         using var scope = BuildScope();
@@ -414,6 +453,16 @@ public class SsoServiceTests
             {
                 "valid-server-token" => Task.FromResult<ClaimsPrincipal?>(CreatePrincipal("server")),
                 "personal-token" => Task.FromResult<ClaimsPrincipal?>(CreatePrincipal("personal")),
+                _ => Task.FromResult<ClaimsPrincipal?>(null)
+            };
+        }
+
+        public Task<ClaimsPrincipal?> ValidateExpiredTokenAsync(string token)
+        {
+            return token switch
+            {
+                "expired-server-token" => Task.FromResult<ClaimsPrincipal?>(CreatePrincipal("server")),
+                "expired-personal-token" => Task.FromResult<ClaimsPrincipal?>(CreatePrincipal("personal")),
                 _ => Task.FromResult<ClaimsPrincipal?>(null)
             };
         }

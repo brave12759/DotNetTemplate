@@ -5,20 +5,22 @@ SSO client 資料存放在 `Sso_Client`。Client 認證資訊不放在 `Sys_Basi
 ## 流程
 
 1. 系統管理員建立 SSO client，並將 `ClientId` 與明文 `ClientSecret` 提供給外部系統。
-2. 外部系統呼叫 `POST /Sso/Login`，用 client 認證資訊換取 Server Token。
+2. 外部系統呼叫 `POST /Sso/login`，用 client 認證資訊換取 Server Token。
 3. API 驗證 client 後回傳短效 Server Token。
-4. 其他系統可呼叫 `POST /Sso/ValidateToken`，確認 Token 是否由本系統發出、尚未過期、未被撤銷、`token_type = server`，且所屬 SSO client 仍為啟用狀態。
+4. 外部系統可呼叫 `POST /Sso/refresh`，使用已過期但簽章與發行資訊有效的 Server Token 換取新 Token。
+5. 其他系統可呼叫 `POST /Sso/validate-token`，確認 Token 是否由本系統發出、尚未過期、未被撤銷、`token_type = server`，且所屬 SSO client 仍為啟用狀態。
 
 ## API
 
 | API | 權限 | 說明 |
 |---|---|---|
-| `GET /Sso/Clients` | `System.SsoClient:Manage` | 查詢 SSO client |
-| `POST /Sso/CreateClient` | `System.SsoClient:Manage` | 建立 SSO client |
-| `PUT /Sso/UpdateClient` | `System.SsoClient:Manage` | 更新 SSO client 或輪替 secret |
-| `DELETE /Sso/DeleteClient?id=1` | `System.SsoClient:Manage` | 刪除 SSO client |
-| `POST /Sso/Login` | 匿名 | 用 client 認證資訊換取 Server Token |
-| `POST /Sso/ValidateToken` | 匿名 | 驗證 Server Token |
+| `GET /Sso/clients` | `System.SsoClient:Manage` | 查詢 SSO client |
+| `POST /Sso/clients` | `System.SsoClient:Manage` | 建立 SSO client |
+| `PUT /Sso/clients` | `System.SsoClient:Manage` | 更新 SSO client 或輪替 secret |
+| `DELETE /Sso/clients/1` | `System.SsoClient:Manage` | 刪除 SSO client |
+| `POST /Sso/login` | 匿名 | 用 client 認證資訊換取 Server Token |
+| `POST /Sso/refresh` | 匿名 | 用已過期 Server Token 換取新 Server Token |
+| `POST /Sso/validate-token` | 匿名 | 驗證 Server Token |
 
 ## 訊息代碼
 
@@ -153,6 +155,6 @@ SSO Server Token 有效時間由 `Sys_BasicSettings` 管理，條件為 `Type = 
 SSO 相關日誌分成兩個面向：
 
 - `UserOperationLog`：管理員建立、更新、刪除 SSO Client。
-- `SsoLog`：外部系統呼叫 `Login` 或 `ValidateToken` 的結果。
+- `SsoLog`：外部系統呼叫 `Login`、`RefreshToken` 或 `ValidateToken` 的結果。
 
 `SsoLog` 會記錄 `ClientId`、事件名稱、成功或失敗、來源 IP 與訊息；不記錄 `ClientSecret`、Server Token 或任何金鑰。建表語法與查詢 API 請參考 [LogService.md](../../LogService/Doc/LogService.md)。

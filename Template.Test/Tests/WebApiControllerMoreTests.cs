@@ -751,6 +751,9 @@ internal sealed class FakeJwtService : IJwtService
     public Task<System.Security.Claims.ClaimsPrincipal?> ValidateTokenAsync(string token, bool validateRevocation = true)
         => Task.FromResult<System.Security.Claims.ClaimsPrincipal?>(null);
 
+    public Task<System.Security.Claims.ClaimsPrincipal?> ValidateExpiredTokenAsync(string token)
+        => Task.FromResult<System.Security.Claims.ClaimsPrincipal?>(null);
+
     public Task<JwtSettingDto> GetSettingsAsync()
         => GetSettingsAsyncFunc?.Invoke() ?? Task.FromResult(new JwtSettingDto());
 

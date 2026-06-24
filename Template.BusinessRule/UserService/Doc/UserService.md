@@ -68,13 +68,13 @@
 
 | API | 說明 |
 |---|---|
-| `GET /User/List?keyword=&isEnable=&deptId=&includeSubDepartments=` | 查詢使用者清單 |
-| `GET /User/GetById?id=1` | 查詢單筆使用者 |
-| `POST /User/Create` | 建立使用者 |
-| `PUT /User/Update` | 更新使用者 |
-| `DELETE /User/Delete?id=1` | 刪除使用者 |
-| `POST /User/ResetPassword` | 重設密碼 |
-| `POST /User/ChangePassword` | 變更密碼 |
+| `GET /User?keyword=&isEnable=&deptId=&includeSubDepartments=` | 查詢使用者清單 |
+| `GET /User/1` | 查詢單筆使用者 |
+| `POST /User` | 建立使用者 |
+| `PUT /User` | 更新使用者 |
+| `DELETE /User/1` | 刪除使用者 |
+| `POST /User/reset-password` | 重設密碼 |
+| `POST /User/change-password` | 變更密碼 |
 
 ## Request 範例
 

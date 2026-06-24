@@ -14,9 +14,9 @@
 
 | API | 權限 | 說明 |
 |---|---|---|
-| `GET /Log/UserOperationLogs` | `System.UserOperationLog:View` | 查詢使用者操作日誌 |
-| `GET /Log/QueueLogs` | `System.QueueLog:View` | 查詢佇列日誌 |
-| `GET /Log/SsoLogs` | `System.SsoLog:View` | 查詢 SSO 日誌 |
+| `GET /Log/user-operation-logs` | `System.UserOperationLog:View` | 查詢使用者操作日誌 |
+| `GET /Log/queue-logs` | `System.QueueLog:View` | 查詢佇列日誌 |
+| `GET /Log/sso-logs` | `System.SsoLog:View` | 查詢 SSO 日誌 |
 
 三個查詢 API 皆支援基本參數：
 

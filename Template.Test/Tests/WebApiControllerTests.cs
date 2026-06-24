@@ -252,6 +252,23 @@ public class SsoControllerTests
     }
 
     [TestMethod]
+    public async Task Refresh_Success_Should_ReturnOkToken()
+    {
+        var ssoService = new FakeSsoService
+        {
+            RefreshAsyncFunc = (_, _) => Task.FromResult(SsoTokenResult.Ok("refreshed-token"))
+        };
+        var controller = CreateSsoController(ssoService);
+
+        var result = await controller.Refresh(new TokenValidateRequest { Token = "expired-token" });
+
+        var ok = result as OkObjectResult;
+        Assert.IsNotNull(ok);
+        var json = JsonSerializer.Serialize(ok.Value);
+        StringAssert.Contains(json, "refreshed-token");
+    }
+
+    [TestMethod]
     public async Task Login_Success_Should_ReturnOkToken()
     {
         var ssoService = new FakeSsoService
@@ -386,6 +403,7 @@ public class SsoControllerTests
         public Func<SsoClientUpdateRequest, Task<bool>>? UpdateClientAsyncFunc { get; set; }
         public Func<int, Task<bool>>? DeleteClientAsyncFunc { get; set; }
         public Func<string, string, string, Task<SsoTokenResult>>? LoginAsyncFunc { get; set; }
+        public Func<string, string, Task<SsoTokenResult>>? RefreshAsyncFunc { get; set; }
         public Func<string, Task<SsoTokenValidateResult>>? ValidateTokenAsyncFunc { get; set; }
 
         public Task<PageListOutput<SsoClientDto>> GetClientsAsync(string? keyword, bool? isEnable, bool enablePaging = false, int page = 1, int pageSize = 50)
@@ -402,6 +420,9 @@ public class SsoControllerTests
 
         public Task<SsoTokenResult> LoginAsync(string clientId, string clientSecret, string ip)
             => LoginAsyncFunc?.Invoke(clientId, clientSecret, ip) ?? Task.FromResult(SsoTokenResult.Ok("token"));
+
+        public Task<SsoTokenResult> RefreshAsync(string token, string ip)
+            => RefreshAsyncFunc?.Invoke(token, ip) ?? Task.FromResult(SsoTokenResult.Ok("token"));
 
         public Task<SsoTokenValidateResult> ValidateTokenAsync(string token)
             => ValidateTokenAsyncFunc?.Invoke(token) ?? Task.FromResult(new SsoTokenValidateResult());

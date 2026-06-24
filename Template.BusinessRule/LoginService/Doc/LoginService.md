@@ -61,7 +61,7 @@ UpdatedTime + AccountFailLock 分鐘 > 現在時間
 
 ## Token 刷新流程
 
-1. 前端帶目前有效的 Bearer Token 呼叫 `POST /Auth/Refresh`。
+1. 前端帶目前有效的 Bearer Token 呼叫 `POST /Auth/refresh`。
 2. API 從 Token 取得 `UserId`、`jti` 與 `exp`。
 3. 服務確認使用者存在、啟用、未被登入失敗鎖定，且密碼未過期。
 4. 產生新的 JWT Token。
@@ -72,10 +72,10 @@ UpdatedTime + AccountFailLock 分鐘 > 現在時間
 
 | API | 權限 | 說明 |
 |---|---|---|
-| `POST /Auth/Login` | 匿名 | 使用帳號密碼登入並取得 JWT Token |
-| `POST /Auth/Refresh` | 需 JWT | 使用目前尚未過期的 JWT Token 換取新 Token，並撤銷舊 Token |
-| `GET /Auth/Me` | 需 JWT | 取得目前 Token 內的使用者資訊 |
-| `POST /Auth/Logout` | 需 JWT | 登出並撤銷目前 Token |
+| `POST /Auth/login` | 匿名 | 使用帳號密碼登入並取得 JWT Token |
+| `POST /Auth/refresh` | 需 JWT | 使用目前尚未過期的 JWT Token 換取新 Token，並撤銷舊 Token |
+| `GET /Auth/me` | 需 JWT | 取得目前 Token 內的使用者資訊 |
+| `POST /Auth/logout` | 需 JWT | 登出並撤銷目前 Token |
 
 ## LoginResult
 

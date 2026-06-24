@@ -239,8 +239,8 @@ dotnet build MyApp.slnx
 
 ## 登入服務
 
-- `POST /Auth/Login`：驗帳號密碼 → 發放 JWT
-- `POST /Auth/Logout`：撤銷當前 Token（jti 加入黑名單）
+- `POST /Auth/login`：驗帳號密碼 → 發放 JWT
+- `POST /Auth/logout`：撤銷當前 Token（jti 加入黑名單）
 - `DevLoginAsync`：開發用，查不到使用者時以假資料發放 Token
 
 → [完整說明](Template.BusinessRule/LoginService/Doc/LoginService.md)
@@ -249,12 +249,12 @@ dotnet build MyApp.slnx
 
 ## 使用者管理服務
 
-- `GET /User/List`：依關鍵字與啟用狀態查詢使用者清單
-- `GET /User/GetById`：查單筆使用者
-- `POST /User/Create`：建立使用者（密碼雜湊）
-- `PUT /User/Update`：更新基本資料（不含密碼）
-- `DELETE /User/Delete`：刪除使用者
-- `POST /User/ResetPassword`：重設密碼（PBKDF2 雜湊）
+- `GET /User`：依關鍵字與啟用狀態查詢使用者清單
+- `GET /User/{id}`：查單筆使用者
+- `POST /User`：建立使用者（密碼雜湊）
+- `PUT /User`：更新基本資料（不含密碼）
+- `DELETE /User/{id}`：刪除使用者
+- `POST /User/reset-password`：重設密碼（PBKDF2 雜湊）
 
 → [完整說明](Template.BusinessRule/UserService/Doc/UserService.md)
 

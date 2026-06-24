@@ -33,7 +33,7 @@ Template.WebApi/
 │   ├── DevBypassAuthenticationOptions.cs   # DevBypass 選項（無設定值）
 │   └── DevBypassUserSettings.cs            # DevBypass 假使用者設定
 ├── Controllers/
-│   ├── BaseController.cs                   # 基底（[ApiController] [Route("[controller]/[action]")]）
+│   ├── BaseController.cs                   # 基底（[ApiController] [Route("[controller]")]]）
 │   ├── AuthenticationController.cs         # 需授權 Controller 基底（[Authorize]）
 │   ├── AuthController.cs                   # Login / Refresh / Me / Logout
 │   ├── BackgroundQueueController.cs        # /BackgroundQueue/*，背景工作佇列查詢
@@ -53,7 +53,7 @@ Template.WebApi/
 │   └── SkipResponseWrapAttribute.cs        # 標記跳過 ResponseWrapper 的 Attribute
 ├── Models/
 │   └── Auth/
-│       ├── LoginRequest.cs                 # POST /Auth/Login 請求模型
+│       ├── LoginRequest.cs                 # POST /Auth/login 請求模型
 │       └── AuthTokenResponse.cs            # Login / Refresh Token 回傳模型
 ├── Services/
 │   ├── JwtService.cs                       # JWT Token 產生（實作 IJwtService）
@@ -68,7 +68,7 @@ Template.WebApi/
 
 ```
 BaseController<T>
-│   [ApiController] [Route("[controller]/[action]")]
+│   [ApiController] [Route("[controller]")]]
 │
 └── AuthenticationController<T>
 │       [Authorize]
@@ -116,9 +116,9 @@ AuthController                      ← 各 Action 自行標記 [AllowAnonymous]
 
 | Controller | API | 說明 |
 |---|---|---|
-| `LogController` | `GET /Log/UserOperationLogs` | 查詢使用者操作日誌，需要 `System.UserOperationLog:View` 權限 |
-| `LogController` | `GET /Log/QueueLogs` | 查詢佇列日誌，需要 `System.QueueLog:View` 權限 |
-| `LogController` | `GET /Log/SsoLogs` | 查詢 SSO 日誌，需要 `System.SsoLog:View` 權限 |
+| `LogController` | `GET /Log/user-operation-logs` | 查詢使用者操作日誌，需要 `System.UserOperationLog:View` 權限 |
+| `LogController` | `GET /Log/queue-logs` | 查詢佇列日誌，需要 `System.QueueLog:View` 權限 |
+| `LogController` | `GET /Log/sso-logs` | 查詢 SSO 日誌，需要 `System.SsoLog:View` 權限 |
 
 日誌服務文件請參考 [LogService.md](../Template.BusinessRule/LogService/Doc/LogService.md)。
 

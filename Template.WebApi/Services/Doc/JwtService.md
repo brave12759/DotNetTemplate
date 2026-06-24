@@ -18,7 +18,7 @@ JWT 設定改由資料庫 `Sys_BasicSettings` 管理，`Type = JwtSetting`。
 
 初始資料可執行 `Template.DataAccess/Scripts/SeedJwtSettings.sql`。部署後可透過 `JwtSettingController` 查詢或更新設定。
 
-`GET /JwtSetting/Get` 只會回傳遮罩後的簽章金鑰；完整 `SecretKey` 只允許透過 `PUT /JwtSetting/Update` 寫入，不會完整回傳給 API 呼叫端。
+`GET /JwtSetting` 只會回傳遮罩後的簽章金鑰；完整 `SecretKey` 只允許透過 `PUT /JwtSetting` 寫入，不會完整回傳給 API 呼叫端。
 
 JWT 設定不再放在 `appsettings.json` 或 `.env`。
 
@@ -61,11 +61,11 @@ HTTP Authorization: Bearer <token>
 ## SSO 流程
 
 ```text
-POST /Sso/Login
+POST /Sso/login
   -> SsoService 驗證 Sso_Client 中的 ClientId 與 ClientSecret
   -> JwtService.GenerateServerTokenAsync 發出短效 Server Token
 
-POST /Sso/ValidateToken
+POST /Sso/validate-token
   -> SsoService 透過 JwtService 驗證 Token
   -> token_type 必須是 server
   -> client_id 必須對應到啟用中的 SSO client

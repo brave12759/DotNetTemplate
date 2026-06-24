@@ -79,7 +79,7 @@ DevBypassAuthenticationHandler 建立的假用戶含以下 Claims，與真實 JW
 
 ## 注意事項
 
-- `POST /Auth/Logout` 需要 `Authorization: Bearer <token>` 才能執行撤銷。Development 環境若以 DevBypass（無 Token）呼叫 Logout，會回傳 `400 BadRequest`，因為沒有 jti 可撤銷。
+- `POST /Auth/logout` 需要 `Authorization: Bearer <token>` 才能執行撤銷。Development 環境若以 DevBypass（無 Token）呼叫 Logout，會回傳 `400 BadRequest`，因為沒有 jti 可撤銷。
 - DevBypass 的 jti 每次都是新 GUID，無需也無法撤銷。
 - 此機制僅在 `builder.Environment.IsDevelopment()` 為 true 時才會被 Program.cs 註冊，正式環境不會存在此 Scheme。
 

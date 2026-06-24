@@ -25,8 +25,8 @@ HTTPS、HSTS、憑證載入與 JWT runtime 設定不在這裡管理：
 JWT 設定透過資料庫與 API 管理：
 
 - DB：`Sys_BasicSettings`，`Type = JwtSetting`
-- API：`GET /JwtSetting/Get`
-- API：`PUT /JwtSetting/Update`
+- API：`GET /JwtSetting`
+- API：`PUT /JwtSetting`
 
 必要 Key：
 

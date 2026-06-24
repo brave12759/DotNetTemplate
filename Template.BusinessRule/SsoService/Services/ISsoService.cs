@@ -15,5 +15,6 @@ public interface ISsoService
     Task<bool> UpdateClientAsync(SsoClientUpdateRequest request);
     Task<bool> DeleteClientAsync(int id);
     Task<SsoTokenResult> LoginAsync(string clientId, string clientSecret, string ip);
+    Task<SsoTokenResult> RefreshAsync(string token, string ip);
     Task<SsoTokenValidateResult> ValidateTokenAsync(string token);
 }
