@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.JsonPatch.SystemTextJson;
 using Microsoft.AspNetCore.Mvc;
 using Template.BusinessRule.SsoService.Enums;
 using Template.BusinessRule.SsoService.Exceptions;
@@ -49,6 +50,45 @@ public class SsoController(
     {
         try
         {
+            var updated = await ssoService.UpdateClientAsync(request);
+            if (!updated)
+                return NotFound(ToMessageResponse(SsoMessageEnum.ClientNotFound));
+
+            return Ok(ToMessageResponse(SsoMessageEnum.UpdatedSuccessfully));
+        }
+        catch (SsoMessageException ex)
+        {
+            return BadRequest(ToMessageResponse(ex.MessageCode));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    [HttpPatch]
+    [RequirePermission(ManageSsoClientsPermission)]
+    public async Task<IActionResult> PatchClient([FromRoute] int id, [FromBody] JsonPatchDocument<SsoClientUpdateRequest> patch)
+    {
+        try
+        {
+            var client = await ssoService.GetClientByIdAsync(id);
+            if (client is null)
+                return NotFound(ToMessageResponse(SsoMessageEnum.ClientNotFound));
+
+            var request = new SsoClientUpdateRequest
+            {
+                Id = client.Id,
+                ClientName = client.ClientName,
+                ClientSecret = null,
+                IsEnable = client.IsEnable
+            };
+
+            patch.ApplyTo(request, error => ModelState.AddModelError(error.Operation.path, error.ErrorMessage));
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            request.Id = id;
             var updated = await ssoService.UpdateClientAsync(request);
             if (!updated)
                 return NotFound(ToMessageResponse(SsoMessageEnum.ClientNotFound));

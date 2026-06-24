@@ -1,4 +1,4 @@
-﻿# UserService 使用者服務
+# UserService 使用者服務
 
 [專案 README](../../../README.md) / [BusinessRule README](../../README.md)
 
@@ -71,10 +71,20 @@
 | `GET /User?keyword=&isEnable=&deptId=&includeSubDepartments=` | 查詢使用者清單 |
 | `GET /User/1` | 查詢單筆使用者 |
 | `POST /User` | 建立使用者 |
-| `PUT /User` | 更新使用者 |
+| `PUT /User` | 完整更新使用者 |
+| `PATCH /User/1` | 局部更新使用者 |
 | `DELETE /User/1` | 刪除使用者 |
 | `POST /User/reset-password` | 重設密碼 |
 | `POST /User/change-password` | 變更密碼 |
+
+`PATCH /User/1` 使用 JSON Patch 格式，只送需要調整的欄位。後端會先讀取現有使用者，套用 patch 後再走 `UpdateAsync`，因此部門檢查與稽核日誌規則與 `PUT /User` 相同。
+
+```json
+[
+  { "op": "replace", "path": "/email", "value": "alice@example.com" },
+  { "op": "replace", "path": "/isEnable", "value": true }
+]
+```
 
 ## Request 範例
 

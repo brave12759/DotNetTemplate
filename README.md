@@ -252,7 +252,8 @@ dotnet build MyApp.slnx
 - `GET /User`：依關鍵字與啟用狀態查詢使用者清單
 - `GET /User/{id}`：查單筆使用者
 - `POST /User`：建立使用者（密碼雜湊）
-- `PUT /User`：更新基本資料（不含密碼）
+- `PUT /User`：完整更新基本資料（不含密碼）
+- `PATCH /User/{id}`：局部更新基本資料（JSON Patch）
 - `DELETE /User/{id}`：刪除使用者
 - `POST /User/reset-password`：重設密碼（PBKDF2 雜湊）
 
@@ -275,7 +276,7 @@ dotnet build MyApp.slnx
 | 順序 | Filter | 說明 |
 |---|---|---|
 | 最先 | `GlobalExceptionLogFilter` (Order=int.MinValue) | 捕捉例外，記錄 TraceId/UserId/TokenId，回傳 500 |
-| 最後 | `ResponseWrapperFilter` (Order=int.MaxValue) | 包裝所有回傳為 `ResponseMessage<T>` |
+| 最後 | `ResponseWrapperFilter` (Order=int.MaxValue) | 包裝所有回傳為 `ResponseMessage<T>`，Swagger 也會呈現統一外層格式 |
 
 → [完整說明](Template.WebApi/Filters/Doc/Filters.md)
 

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.JsonPatch.SystemTextJson;
 using Template.BusinessRule.UserService.Services;
 using Template.Common.Models.User;
 
@@ -100,6 +101,45 @@ public class UserController(
     {
         try
         {
+            var updated = await _userService.UpdateAsync(request);
+            if (!updated)
+                return NotFound("找不到指定的使用者。");
+
+            return Ok(new { Message = "更新成功。" });
+        }
+        catch (ArgumentException)
+        {
+            return BadRequest("輸入參數有誤，請確認更新資料。");
+        }
+    }
+
+    /// <summary>
+    /// 局部更新使用者基本資料（不含密碼）。
+    /// </summary>
+    [HttpPatch]
+    public async Task<IActionResult> Patch([FromRoute] int id, [FromBody] JsonPatchDocument<UserUpdateRequest> patch)
+    {
+        try
+        {
+            var user = await _userService.GetByIdAsync(id);
+            if (user is null)
+                return NotFound("找不到指定的使用者。");
+
+            var request = new UserUpdateRequest
+            {
+                Id = user.Id,
+                UserName = user.UserName,
+                DeptId = user.DeptId,
+                MobilePhone = user.MobilePhone,
+                Email = user.Email,
+                IsEnable = user.IsEnable
+            };
+
+            patch.ApplyTo(request, error => ModelState.AddModelError(error.Operation.path, error.ErrorMessage));
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            request.Id = id;
             var updated = await _userService.UpdateAsync(request);
             if (!updated)
                 return NotFound("找不到指定的使用者。");

@@ -36,14 +36,17 @@
 
 | API | 說明 |
 | --- | --- |
-| `GET /RoleGroup/List?keyword=&isEnable=` | 取得角色群組平面清單 |
-| `GET /RoleGroup/Tree?isEnable=` | 取得角色群組樹狀資料 |
-| `GET /RoleGroup/GetById?roleGroupId=1` | 依 RoleGroupId 取得單筆角色群組 |
-| `POST /RoleGroup/Create` | 新增角色群組 |
-| `PUT /RoleGroup/Update` | 更新角色群組 |
-| `DELETE /RoleGroup/Delete?roleGroupId=1` | 刪除角色群組 |
-| `GET /RoleGroup/User?userId=admin&isEnable=true` | 取得指定使用者擁有的角色群組 |
-| `PUT /RoleGroup/UpdateUser` | 更新指定使用者擁有的角色群組 |
+| `GET /RoleGroup?keyword=&isEnable=` | 取得角色群組平面清單 |
+| `GET /RoleGroup/tree?isEnable=` | 取得角色群組樹狀資料 |
+| `GET /RoleGroup/1` | 依 RoleGroupId 取得單筆角色群組 |
+| `POST /RoleGroup` | 新增角色群組 |
+| `PUT /RoleGroup` | 完整更新角色群組 |
+| `PATCH /RoleGroup/1` | 局部更新角色群組 |
+| `DELETE /RoleGroup/1` | 刪除角色群組 |
+| `GET /RoleGroup/users/admin?isEnable=true` | 取得指定使用者擁有的角色群組 |
+| `PUT /RoleGroup/users` | 更新指定使用者擁有的角色群組 |
+
+`PATCH /RoleGroup/1` 使用 JSON Patch 格式，適合只調整角色群組名稱、描述、排序或啟用狀態；使用者角色群組指派屬於整批覆蓋操作，仍使用 `PUT /RoleGroup/users`。
 
 ## DI 註冊方式
 

@@ -1,4 +1,4 @@
-﻿# SsoService
+# SsoService
 
 SSO client 資料存放在 `Sso_Client`。Client 認證資訊不放在 `Sys_BasicSettings`，避免把外部系統帳密資料混在一般系統設定中。
 
@@ -16,7 +16,8 @@ SSO client 資料存放在 `Sso_Client`。Client 認證資訊不放在 `Sys_Basi
 |---|---|---|
 | `GET /Sso/clients` | `System.SsoClient:Manage` | 查詢 SSO client |
 | `POST /Sso/clients` | `System.SsoClient:Manage` | 建立 SSO client |
-| `PUT /Sso/clients` | `System.SsoClient:Manage` | 更新 SSO client 或輪替 secret |
+| `PUT /Sso/clients` | `System.SsoClient:Manage` | 完整更新 SSO client 或輪替 secret |
+| `PATCH /Sso/clients/1` | `System.SsoClient:Manage` | 局部更新 SSO client |
 | `DELETE /Sso/clients/1` | `System.SsoClient:Manage` | 刪除 SSO client |
 | `POST /Sso/login` | 匿名 | 用 client 認證資訊換取 Server Token |
 | `POST /Sso/refresh` | 匿名 | 用已過期 Server Token 換取新 Server Token |

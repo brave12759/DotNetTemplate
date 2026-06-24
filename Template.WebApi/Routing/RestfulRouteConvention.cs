@@ -7,7 +7,7 @@ namespace Template.WebApi.Routing;
 /// </summary>
 public sealed class RestfulRouteConvention : IActionModelConvention
 {
-    private static readonly string[] CollectionPrefixes = ["Create", "Update", "Delete"];
+    private static readonly string[] CollectionPrefixes = ["Create", "Update", "Delete", "Patch"];
 
     /// <inheritdoc />
     public void Apply(ActionModel action)
@@ -31,7 +31,7 @@ public sealed class RestfulRouteConvention : IActionModelConvention
         if (action.ActionName is "List" or "Create" or "Update" or "Get")
             return null;
 
-        if (action.ActionName is "GetById" or "Delete")
+        if (action.ActionName is "GetById" or "Delete" or "Patch")
             return BuildRouteParameterTemplate(action);
 
         return ToKebabCase(action.ActionName);
@@ -84,7 +84,7 @@ public sealed class RestfulRouteConvention : IActionModelConvention
         var resourceName = action.ActionName[prefix.Length..];
         template = ToResourceSegment(resourceName);
 
-        if (prefix == "Delete")
+        if (prefix is "Delete" or "Patch")
             template = $"{template}/{BuildRouteParameterTemplate(action)}";
 
         return true;

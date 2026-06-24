@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.JsonPatch.SystemTextJson;
 using Template.BusinessRule.MenuTreeService.Models;
 using Template.BusinessRule.MenuTreeService.Services;
 
@@ -78,6 +79,46 @@ public class MenuTreeController(
     {
         try
         {
+            var updated = await _menuTreeService.UpdateAsync(request);
+            if (!updated)
+                return NotFound("查無選單資料。");
+
+            return Ok(new { Message = "更新成功。" });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// 局部更新選單。
+    /// </summary>
+    [HttpPatch]
+    public async Task<IActionResult> Patch([FromRoute] int id, [FromBody] JsonPatchDocument<MenuTreeUpdateRequest> patch)
+    {
+        try
+        {
+            var menu = await _menuTreeService.GetByIdAsync(id);
+            if (menu is null)
+                return NotFound("查無選單資料。");
+
+            var request = new MenuTreeUpdateRequest
+            {
+                Id = menu.Id,
+                ParentId = menu.ParentId,
+                MenuCode = menu.MenuCode,
+                MenuName = menu.MenuName,
+                Icon = menu.Icon,
+                SortOrder = menu.SortOrder,
+                IsEnable = menu.IsEnable
+            };
+
+            patch.ApplyTo(request, error => ModelState.AddModelError(error.Operation.path, error.ErrorMessage));
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            request.Id = id;
             var updated = await _menuTreeService.UpdateAsync(request);
             if (!updated)
                 return NotFound("查無選單資料。");

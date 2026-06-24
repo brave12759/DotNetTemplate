@@ -40,12 +40,15 @@
 
 | API                                     | 說明               |
 | --------------------------------------- | ------------------ |
-| `GET /MenuTree/List?keyword=&isEnable=` | 取得平面清單       |
-| `GET /MenuTree/Tree?isEnable=`          | 取得父子階層選單樹 |
-| `GET /MenuTree/GetById?id=1`            | 依 Id 取得單筆選單 |
-| `POST /MenuTree/Create`                 | 新增選單           |
-| `PUT /MenuTree/Update`                  | 更新選單           |
-| `DELETE /MenuTree/Delete?id=1`          | 刪除選單           |
+| `GET /MenuTree?keyword=&isEnable=` | 取得平面清單       |
+| `GET /MenuTree/tree?isEnable=`          | 取得父子階層選單樹 |
+| `GET /MenuTree/1`            | 依 Id 取得單筆選單 |
+| `POST /MenuTree`                 | 新增選單           |
+| `PUT /MenuTree`                  | 完整更新選單       |
+| `PATCH /MenuTree/1`              | 局部更新選單       |
+| `DELETE /MenuTree/1`          | 刪除選單           |
+
+`PATCH /MenuTree/1` 使用 JSON Patch 格式，適合只調整名稱、排序、圖示或啟用狀態等少數欄位；套用後仍會呼叫 `UpdateAsync` 執行原本的階層循環檢查與稽核。
 
 ## DI 實裝方式
 

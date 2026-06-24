@@ -33,7 +33,7 @@ Template.WebApi/
 │   ├── DevBypassAuthenticationOptions.cs   # DevBypass 選項（無設定值）
 │   └── DevBypassUserSettings.cs            # DevBypass 假使用者設定
 ├── Controllers/
-│   ├── BaseController.cs                   # 基底（[ApiController] [Route("[controller]")]]）
+│   ├── BaseController.cs                   # 基底（[ApiController] [Route("[controller]")])
 │   ├── AuthenticationController.cs         # 需授權 Controller 基底（[Authorize]）
 │   ├── AuthController.cs                   # Login / Refresh / Me / Logout
 │   ├── BackgroundQueueController.cs        # /BackgroundQueue/*，背景工作佇列查詢
@@ -68,7 +68,7 @@ Template.WebApi/
 
 ```
 BaseController<T>
-│   [ApiController] [Route("[controller]")]]
+│   [ApiController] [Route("[controller]")]
 │
 └── AuthenticationController<T>
 │       [Authorize]
@@ -92,6 +92,34 @@ AuthController                      ← 各 Action 自行標記 [AllowAnonymous]
 | SignalR Queue | `/hubs/notifications` 與 Queue handler，預設搭配 BackgroundQueue 使用 | [SignalR.md](../Template.Common/SignalR/Doc/SignalR.md) |
 | 使用者管理 | 使用者 CRUD、重設密碼、參數驗證規則 | [UserService.md](../Template.BusinessRule/UserService/Doc/UserService.md) |
  
+---
+
+## REST 路由與 PATCH
+
+Controller 基底只定義 `[Route("[controller]")]`，各 action 的路由由 `RestfulRouteConvention` 依命名慣例集中產生。
+
+| Action 命名 | HTTP Method | 路由範例 | 用途 |
+|---|---|---|---|
+| `List` / `Get` | `GET` | `/User` | 查詢集合或單一設定資源 |
+| `GetById(id)` | `GET` | `/User/1` | 查詢單筆資料 |
+| `Create` | `POST` | `/User` | 建立資料 |
+| `Update` | `PUT` | `/User` | 完整更新資源 |
+| `Patch(id)` | `PATCH` | `/User/1` | 局部更新資源 |
+| `Delete(id)` | `DELETE` | `/User/1` | 刪除資料 |
+
+`PUT` 保留完整更新語意，request body 必須帶完整 `UpdateRequest`。`PATCH` 使用 `Microsoft.AspNetCore.JsonPatch.SystemTextJson`，先讀取現有資料組成 `UpdateRequest`，套用 JSON Patch 後再呼叫既有 `UpdateAsync`，因此驗證、稽核與資料更新仍集中在 Service。
+
+JSON Patch request 範例：
+
+```json
+[
+  { "op": "replace", "path": "/userName", "value": "Alice Chen" },
+  { "op": "replace", "path": "/isEnable", "value": true }
+]
+```
+
+目前只有單筆資源更新支援 `PATCH`，例如 `User`、`Department`、`MenuTree`、`RoleGroup`、`FunctionPermission` 與 `Sso/clients`。角色權限整批覆蓋、使用者角色群組、JWT 設定等批次或設定型操作仍使用 `PUT`。
+
 ---
 
 ## 環境變數

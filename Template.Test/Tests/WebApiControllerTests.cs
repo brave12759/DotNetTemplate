@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.JsonPatch.SystemTextJson;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -328,6 +329,37 @@ public class SsoControllerTests
     }
 
     [TestMethod]
+    public async Task PatchClient_Success_Should_ApplyPatchAndReturnOk()
+    {
+        SsoClientUpdateRequest? patchedRequest = null;
+        var ssoService = new FakeSsoService
+        {
+            GetClientByIdAsyncFunc = _ => Task.FromResult<SsoClientDto?>(new SsoClientDto
+            {
+                Id = 1,
+                ClientName = "old",
+                IsEnable = true
+            }),
+            UpdateClientAsyncFunc = request =>
+            {
+                patchedRequest = request;
+                return Task.FromResult(true);
+            }
+        };
+        var controller = CreateSsoController(ssoService);
+        var patch = new JsonPatchDocument<SsoClientUpdateRequest>()
+            .Replace(x => x.ClientName, "new");
+
+        var result = await controller.PatchClient(1, patch);
+
+        Assert.IsInstanceOfType<OkObjectResult>(result);
+        Assert.IsNotNull(patchedRequest);
+        Assert.AreEqual(1, patchedRequest.Id);
+        Assert.AreEqual("new", patchedRequest.ClientName);
+        Assert.IsTrue(patchedRequest.IsEnable);
+    }
+
+    [TestMethod]
     public async Task CreateClient_ArgumentException_Should_ReturnBadRequest()
     {
         var ssoService = new FakeSsoService
@@ -399,6 +431,7 @@ public class SsoControllerTests
     private sealed class FakeSsoService : ISsoService
     {
         public Func<string?, bool?, Task<PageListOutput<SsoClientDto>>>? GetClientsAsyncFunc { get; set; }
+        public Func<int, Task<SsoClientDto?>>? GetClientByIdAsyncFunc { get; set; }
         public Func<SsoClientCreateRequest, Task<SsoClientDto>>? CreateClientAsyncFunc { get; set; }
         public Func<SsoClientUpdateRequest, Task<bool>>? UpdateClientAsyncFunc { get; set; }
         public Func<int, Task<bool>>? DeleteClientAsyncFunc { get; set; }
@@ -408,6 +441,9 @@ public class SsoControllerTests
 
         public Task<PageListOutput<SsoClientDto>> GetClientsAsync(string? keyword, bool? isEnable, bool enablePaging = false, int page = 1, int pageSize = 50)
             => GetClientsAsyncFunc?.Invoke(keyword, isEnable) ?? Task.FromResult(new PageListOutput<SsoClientDto>());
+
+        public Task<SsoClientDto?> GetClientByIdAsync(int id)
+            => GetClientByIdAsyncFunc?.Invoke(id) ?? Task.FromResult<SsoClientDto?>(new SsoClientDto { Id = id });
 
         public Task<SsoClientDto> CreateClientAsync(SsoClientCreateRequest request)
             => CreateClientAsyncFunc?.Invoke(request) ?? Task.FromResult(new SsoClientDto());

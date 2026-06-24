@@ -1,4 +1,4 @@
-﻿# LoginService 登入服務
+# LoginService 登入服務
 
 [專案 README](../../../README.md) / [BusinessRule README](../../README.md)
 

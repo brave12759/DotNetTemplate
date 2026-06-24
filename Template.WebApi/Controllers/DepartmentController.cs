@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.JsonPatch.SystemTextJson;
 using Template.BusinessRule.DepartmentService.Models;
 using Template.BusinessRule.DepartmentService.Services;
 
@@ -78,6 +79,44 @@ public class DepartmentController(
     {
         try
         {
+            var updated = await _departmentService.UpdateAsync(request);
+            if (!updated)
+                return NotFound("Department not found.");
+
+            return Ok(new { Message = "Updated successfully." });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// 局部更新部門。
+    /// </summary>
+    [HttpPatch]
+    public async Task<IActionResult> Patch([FromRoute] int deptId, [FromBody] JsonPatchDocument<DepartmentUpdateRequest> patch)
+    {
+        try
+        {
+            var department = await _departmentService.GetByIdAsync(deptId);
+            if (department is null)
+                return NotFound("Department not found.");
+
+            var request = new DepartmentUpdateRequest
+            {
+                DeptId = department.DeptId,
+                DeptName = department.DeptName,
+                ParentDeptId = department.ParentDeptId,
+                SortOrder = department.SortOrder,
+                IsEnable = department.IsEnable
+            };
+
+            patch.ApplyTo(request, error => ModelState.AddModelError(error.Operation.path, error.ErrorMessage));
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            request.DeptId = deptId;
             var updated = await _departmentService.UpdateAsync(request);
             if (!updated)
                 return NotFound("Department not found.");

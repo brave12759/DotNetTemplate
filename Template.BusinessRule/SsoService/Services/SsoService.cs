@@ -59,6 +59,19 @@ public class SsoService(IServiceProvider serviceProvider) : BaseService(serviceP
     }
 
     /// <inheritdoc />
+    public async Task<SsoClientDto?> GetClientByIdAsync(int id)
+    {
+        if (id <= 0)
+            throw new SsoMessageException(SsoMessageEnum.IdMustBeGreaterThanZero, nameof(id));
+
+        return await Db.Sso_Clients
+            .AsNoTracking()
+            .Where(c => c.Id == id)
+            .Select(ToDtoExpression())
+            .FirstOrDefaultAsync();
+    }
+
+    /// <inheritdoc />
     public async Task<SsoClientDto> CreateClientAsync(SsoClientCreateRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);

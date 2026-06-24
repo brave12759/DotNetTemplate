@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.JsonPatch.SystemTextJson;
 using Template.BusinessRule.RoleGroupService.Enums;
 using Template.BusinessRule.RoleGroupService.Models;
 using Template.BusinessRule.RoleGroupService.Services;
@@ -80,6 +81,45 @@ public class RoleGroupController(
     {
         try
         {
+            var updated = await _roleGroupService.UpdateAsync(request);
+            if (!updated)
+                return NotFound(Message(RoleGroupMessageEnum.RoleGroupNotFound));
+
+            return Ok(new { Message = Message(RoleGroupMessageEnum.UpdatedSuccessfully) });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// 局部更新角色群組。
+    /// </summary>
+    [HttpPatch]
+    public async Task<IActionResult> Patch([FromRoute] int roleGroupId, [FromBody] JsonPatchDocument<RoleGroupUpdateRequest> patch)
+    {
+        try
+        {
+            var roleGroup = await _roleGroupService.GetByIdAsync(roleGroupId);
+            if (roleGroup is null)
+                return NotFound(Message(RoleGroupMessageEnum.RoleGroupNotFound));
+
+            var request = new RoleGroupUpdateRequest
+            {
+                RoleGroupId = roleGroup.RoleGroupId,
+                ParentRoleGroupId = roleGroup.ParentRoleGroupId,
+                RoleGroupName = roleGroup.RoleGroupName,
+                Description = roleGroup.Description,
+                SortOrder = roleGroup.SortOrder,
+                IsEnable = roleGroup.IsEnable
+            };
+
+            patch.ApplyTo(request, error => ModelState.AddModelError(error.Operation.path, error.ErrorMessage));
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            request.RoleGroupId = roleGroupId;
             var updated = await _roleGroupService.UpdateAsync(request);
             if (!updated)
                 return NotFound(Message(RoleGroupMessageEnum.RoleGroupNotFound));

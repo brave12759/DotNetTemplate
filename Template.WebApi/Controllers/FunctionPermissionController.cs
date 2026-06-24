@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.JsonPatch.SystemTextJson;
 using Template.BusinessRule.FunctionPermissionService.Enums;
 using Template.BusinessRule.FunctionPermissionService.Models;
 using Template.BusinessRule.FunctionPermissionService.Services;
@@ -80,6 +81,46 @@ public class FunctionPermissionController(
     {
         try
         {
+            var updated = await _functionPermissionService.UpdateAsync(request);
+            if (!updated)
+                return NotFound(Message(FunctionPermissionMessageEnum.FunctionPermissionNotFound));
+
+            return Ok(new { Message = Message(FunctionPermissionMessageEnum.UpdatedSuccessfully) });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// 局部更新功能操作權限。
+    /// </summary>
+    [HttpPatch]
+    public async Task<IActionResult> Patch([FromRoute] int functionPermissionId, [FromBody] JsonPatchDocument<FunctionPermissionUpdateRequest> patch)
+    {
+        try
+        {
+            var permission = await _functionPermissionService.GetByIdAsync(functionPermissionId);
+            if (permission is null)
+                return NotFound(Message(FunctionPermissionMessageEnum.FunctionPermissionNotFound));
+
+            var request = new FunctionPermissionUpdateRequest
+            {
+                FunctionPermissionId = permission.FunctionPermissionId,
+                ParentFunctionPermissionId = permission.ParentFunctionPermissionId,
+                FunctionCode = permission.FunctionCode,
+                FunctionName = permission.FunctionName,
+                OperationCode = permission.OperationCode,
+                SortOrder = permission.SortOrder,
+                IsEnable = permission.IsEnable
+            };
+
+            patch.ApplyTo(request, error => ModelState.AddModelError(error.Operation.path, error.ErrorMessage));
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            request.FunctionPermissionId = functionPermissionId;
             var updated = await _functionPermissionService.UpdateAsync(request);
             if (!updated)
                 return NotFound(Message(FunctionPermissionMessageEnum.FunctionPermissionNotFound));

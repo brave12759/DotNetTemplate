@@ -1,4 +1,4 @@
-﻿# DepartmentService 部門服務
+# DepartmentService 部門服務
 
 [專案 README](../../../README.md) / [BusinessRule README](../../README.md)
 
@@ -56,12 +56,15 @@
 
 | API | 說明 |
 |---|---|
-| `GET /Department/List?keyword=&isEnable=` | 查詢部門清單 |
-| `GET /Department/Tree?isEnable=` | 查詢部門樹狀資料 |
-| `GET /Department/GetById?deptId=1` | 查詢單筆部門 |
-| `POST /Department/Create` | 建立部門 |
-| `PUT /Department/Update` | 更新部門 |
-| `DELETE /Department/Delete?deptId=1` | 刪除部門 |
+| `GET /Department?keyword=&isEnable=` | 查詢部門清單 |
+| `GET /Department/tree?isEnable=` | 查詢部門樹狀資料 |
+| `GET /Department/1` | 查詢單筆部門 |
+| `POST /Department` | 建立部門 |
+| `PUT /Department` | 完整更新部門 |
+| `PATCH /Department/1` | 局部更新部門 |
+| `DELETE /Department/1` | 刪除部門 |
+
+`PATCH /Department/1` 使用 JSON Patch 格式，後端會先讀取現有部門並套用局部異動，再交由 `UpdateAsync` 執行既有驗證與稽核。
 
 ## Request 範例
 

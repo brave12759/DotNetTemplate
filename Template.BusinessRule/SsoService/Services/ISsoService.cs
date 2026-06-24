@@ -11,6 +11,7 @@ public interface ISsoService
         bool enablePaging = false,
         int page = 1,
         int pageSize = 50);
+    Task<SsoClientDto?> GetClientByIdAsync(int id);
     Task<SsoClientDto> CreateClientAsync(SsoClientCreateRequest request);
     Task<bool> UpdateClientAsync(SsoClientUpdateRequest request);
     Task<bool> DeleteClientAsync(int id);
